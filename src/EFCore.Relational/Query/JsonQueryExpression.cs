@@ -7,6 +7,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
 ///     <para>
+///     表示映射到JSON列的实体或实体集合以及访问该列的路径的表达式。
 ///         An expression representing an entity or a collection of entities mapped to a JSON column and the path to access it.
 ///     </para>
 ///     <para>

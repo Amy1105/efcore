@@ -17,6 +17,7 @@ namespace Microsoft.EntityFrameworkCore;
 public static class SqlServerModelBuilderExtensions
 {
     /// <summary>
+    /// 将模型配置为使用基于序列的高低模式来生成关键属性的值标记为<see cref="ValueGenerated.OnAdd"/>。
     ///     Configures the model to use a sequence-based hi-lo pattern to generate values for key properties
     ///     marked as <see cref="ValueGenerated.OnAdd" />, when targeting SQL Server.
     /// </summary>

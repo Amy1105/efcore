@@ -6,6 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
+///     表示SQL树中的表或视图的表达式。
 ///     An expression that represents a table or view in a SQL tree.
 /// </summary>
 /// <remarks>

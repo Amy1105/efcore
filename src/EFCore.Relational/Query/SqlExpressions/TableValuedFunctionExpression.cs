@@ -7,6 +7,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///     将表值函数表示为SQL树中的表源的表达式。
 ///         An expression that represents a table value function as a table source in a SQL tree.
 ///     </para>
 ///     <para>

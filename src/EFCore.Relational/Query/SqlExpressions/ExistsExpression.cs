@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///     一个表达式，表示SQL树中的EXISTS操作。
 ///         An expression that represents an EXISTS operation in a SQL tree.
 ///     </para>
 ///     <para>

@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///        表示SQL令牌的表达式。
 ///         An expression that represents a SQL token.
 ///     </para>
 ///     <para>

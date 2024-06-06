@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
 ///     <para>
+///     一个表达式，表示在中为关系提供程序创建分组＜请参阅cref＝“ShapedQueryExpression.ShaperExpression”/>。
 ///         An expression that represents creation of a grouping for relational provider in
 ///         <see cref="ShapedQueryExpression.ShaperExpression" />.
 ///     </para>

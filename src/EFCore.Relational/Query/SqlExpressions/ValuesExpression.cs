@@ -7,6 +7,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///         在SQL中表示常量表的表达式，有时称为表值构造函数。
 ///         An expression that represents a constant table in SQL, sometimes known as a table value constructor.
 ///     </para>
 ///     <para>

@@ -9,6 +9,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///     表示SQL树中SELECT的表达式。
 ///         An expression that represents a SELECT in a SQL tree.
 ///     </para>
 ///     <para>

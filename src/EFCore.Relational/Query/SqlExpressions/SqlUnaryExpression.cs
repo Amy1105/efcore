@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///     表示SQL树中一元运算的表达式。
 ///         An expression that represents an unary operation in a SQL tree.
 ///     </para>
 ///     <para>

@@ -138,6 +138,7 @@ public class ModelBuilder : IInfrastructure<IConventionModelBuilder>
         => _builder;
 
     /// <summary>
+    /// 返回一个对象，该对象可用于配置模型中给定的实体类型。如果实体类型还不是模型的一部分，则会将其添加到模型中。
     ///     Returns an object that can be used to configure a given entity type in the model.
     ///     If the entity type is not already part of the model, it will be added to the model.
     /// </summary>

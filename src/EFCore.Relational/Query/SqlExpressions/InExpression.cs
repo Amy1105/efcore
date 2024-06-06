@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///     表示SQL树中的IN操作的表达式。
 ///         An expression that represents an IN operation in a SQL tree.
 ///     </para>
 ///     <para>

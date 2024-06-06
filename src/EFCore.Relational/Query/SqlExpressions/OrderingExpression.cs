@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///     表示SQL树中的排序的表达式
 ///         An expression that represents an ordering in a SQL tree.
 ///     </para>
 ///     <para>

@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///          表示从子查询投影标量SQL值的表达式。
 ///         An expression that represents projecting a scalar SQL value from a subquery.
 ///     </para>
 ///     <para>

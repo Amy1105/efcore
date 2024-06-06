@@ -11,6 +11,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure;
 /// </summary>
 /// <remarks>
 ///     <para>
+///     此类的实例被设计为不可变的。要更改选项，请调用其中一个“With…”方法来获取选项已更改的新实例。
 ///         Instances of this class are designed to be immutable. To change an option, call one of the 'With...'
 ///         methods to obtain a new instance with the option changed.
 ///     </para>

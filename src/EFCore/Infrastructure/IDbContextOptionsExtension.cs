@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure;
 
 /// <summary>
 ///     <para>
+///     存储在DbContextOptions.extensions中的扩展的接口。
 ///         Interface for extensions that are stored in <see cref="DbContextOptions.Extensions" />.
 ///     </para>
 ///     <para>

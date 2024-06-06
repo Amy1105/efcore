@@ -7,6 +7,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///     表示具有用户提供的自定义SQL的子查询表源的表达式。
 ///         An expression that represents a subquery table source with user-provided custom SQL.
 ///     </para>
 ///     <para>

@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///        表示SQL树中CASE语句的表达式。
 ///         An expression that represents a CASE statement in a SQL tree.
 ///     </para>
 ///     <para>

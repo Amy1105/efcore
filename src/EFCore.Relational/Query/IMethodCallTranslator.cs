@@ -7,6 +7,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
 ///     <para>
+///       LINQ表达式的SQL转换器。
 ///         A SQL translator for LINQ <see cref="MethodCallExpression" /> expression.
 ///     </para>
 ///     <para>

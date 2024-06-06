@@ -4,6 +4,8 @@
 namespace Microsoft.EntityFrameworkCore.Query.Internal;
 
 /// <summary>
+/// 这是一个内部API，支持实体框架核心基础设施，不受与公共API相同的兼容性标准的约束。在任何发布中，它可能会被更改或删除，
+/// 而无需另行通知。您应该非常谨慎地仅在代码中直接使用它，并知道这样做可能会导致在更新到新的实体框架核心版本时应用程序失败。
 ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
 ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
 ///     any release. You should only use it directly in your code with extreme caution and knowing that

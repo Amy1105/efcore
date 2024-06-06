@@ -7,6 +7,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
 ///     <para>
+///     包含非查询表达式的表达式。非查询表达式的结果通常是受影响的行数。
 ///         An expression that contains a non-query expression. The result of a non-query expression is typically the number of rows affected.
 ///     </para>
 ///     <para>

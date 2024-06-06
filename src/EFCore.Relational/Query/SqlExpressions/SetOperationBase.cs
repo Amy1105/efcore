@@ -7,9 +7,11 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///     表示两个表源之间的集合操作的表达式。
 ///         An expression that represents a set operation between two table sources.
 ///     </para>
 ///     <para>
+///     这种类型通常由数据库提供程序（和其他扩展）使用。一般来说未在应用程序代码中使用。
 ///         This type is typically used by database providers (and other extensions). It is generally
 ///         not used in application code.
 ///     </para>

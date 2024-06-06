@@ -6,8 +6,10 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 /// <summary>
 ///     <para>
 ///         An expression that represents a table source in a SQL tree.
+///         表示SQL树中表源的表达式。
 ///     </para>
 ///     <para>
+///     这种类型通常由数据库提供程序（和其他扩展）使用。一般来说未在应用程序代码中使用。
 ///         This type is typically used by database providers (and other extensions). It is generally
 ///         not used in application code.
 ///     </para>

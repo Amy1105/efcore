@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///        一个表达式，表示SQL树中具有搜索条件的JOIN。
 ///         An expression that represents a JOIN with a search condition in a SQL tree.
 ///     </para>
 ///     <para>

@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///        一个表达式，表示SQL树中的CROSS JOIN。
 ///         An expression that represents a CROSS JOIN in a SQL tree.
 ///     </para>
 ///     <para>

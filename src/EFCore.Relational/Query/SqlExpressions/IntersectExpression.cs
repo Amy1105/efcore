@@ -5,9 +5,11 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///     一个表达式，表示SQL树中的INTERSECT操作。
 ///         An expression that represents an INTERSECT operation in a SQL tree.
 ///     </para>
 ///     <para>
+///     这种类型通常由数据库提供程序（和其他扩展）使用。它通常不用于应用程序代码。
 ///         This type is typically used by database providers (and other extensions). It is generally
 ///         not used in application code.
 ///     </para>

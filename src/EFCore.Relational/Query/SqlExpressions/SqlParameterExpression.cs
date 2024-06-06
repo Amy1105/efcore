@@ -4,6 +4,7 @@
 namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
+/// 表示SQL树中的参数的表达式。
 ///     An expression that represents a parameter in a SQL tree.
 /// </summary>
 /// <remarks>

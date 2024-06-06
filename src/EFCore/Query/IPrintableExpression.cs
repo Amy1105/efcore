@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
 ///     <para>
+///         允许通过<see cref="ExpressionPrinter"/>进行打印的接口。
 ///         An interface that allows printing via <see cref="ExpressionPrinter" />.
 ///     </para>
 ///     <para>

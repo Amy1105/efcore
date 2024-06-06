@@ -4,6 +4,7 @@
 namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
+///      表示<see cref="SelectExpression"/>中投影的表达式。
 ///     An expression that represents a projection in <see cref="SelectExpression" />.
 /// </summary>
 /// <remarks>

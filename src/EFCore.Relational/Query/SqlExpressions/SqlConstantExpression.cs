@@ -7,6 +7,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///     表示SQL树中的常量的表达式。
 ///         An expression that represents a constant in a SQL tree.
 ///     </para>
 ///     <para>

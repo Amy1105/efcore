@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///        一个表达式，表示SQL树中的UPDATE操作。
 ///         An expression that represents an UPDATE operation in a SQL tree.
 ///     </para>
 ///     <para>

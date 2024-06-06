@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
 ///     <para>
+///     表示查询表达式中实体查询根的表达式。
 ///         An expression that represents an entity query root in query expression.
 ///     </para>
 ///     <para>

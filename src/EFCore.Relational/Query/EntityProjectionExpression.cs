@@ -7,6 +7,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
 ///     <para>
+///     表示<see cref="SelectExpression"/>投影中的实体的表达式。
 ///         An expression that represents an entity in the projection of <see cref="SelectExpression" />.
 ///     </para>
 ///     <para>

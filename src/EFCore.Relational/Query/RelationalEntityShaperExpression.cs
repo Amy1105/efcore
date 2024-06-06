@@ -7,6 +7,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
 ///     <para>
+///     一个表达式，表示在中为关系提供程序创建实体实例＜请参阅cref＝“ShapedQueryExpression.ShaperExpression”/>。
 ///         An expression that represents creation of an entity instance for a relational provider in
 ///         <see cref="ShapedQueryExpression.ShaperExpression" />.
 ///     </para>

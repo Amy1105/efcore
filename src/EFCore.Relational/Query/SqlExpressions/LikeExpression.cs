@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///     表示SQL树中LIKE的表达式。
 ///         An expression that represents a LIKE in a SQL tree.
 ///     </para>
 ///     <para>

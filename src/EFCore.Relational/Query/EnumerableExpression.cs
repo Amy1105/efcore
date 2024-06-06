@@ -7,6 +7,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
 ///     <para>
+///     表示从分组元素上的链转换而来的可枚举或组的表达式。
 ///         An expression that represents an enumerable or group translated from chain over a grouping element.
 ///     </para>
 ///     <para>

@@ -7,6 +7,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
 ///     <para>
+///     一个表达式，表示在中的关系提供程序的拆分查询期间创建集合＜请参阅cref＝“ShapedQueryExpression.ShaperExpression”/>。
 ///         An expression that represents creation of a collection during split query for relational provider in
 ///         <see cref="ShapedQueryExpression.ShaperExpression" />.
 ///     </para>

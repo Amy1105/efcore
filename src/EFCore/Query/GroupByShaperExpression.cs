@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
 ///     <para>
+///     表示在<see cref="ShapedQueryExpression.ShaperExpression"/>中创建分组元素的表达式。
 ///         An expression that represents creation of a grouping element in <see cref="ShapedQueryExpression.ShaperExpression" />.
 ///     </para>
 ///     <para>

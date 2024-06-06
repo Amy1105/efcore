@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///         表示SQL树中的CROSS APPLY的表达式。
 ///         An expression that represents a CROSS APPLY in a SQL tree.
 ///     </para>
 ///     <para>

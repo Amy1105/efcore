@@ -7,6 +7,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///      表示SQL树中的函数调用的表达式。
 ///         An expression that represents a function call in a SQL tree.
 ///     </para>
 ///     <para>

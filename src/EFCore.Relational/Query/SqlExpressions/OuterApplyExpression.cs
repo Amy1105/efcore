@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///        一个表达式，表示SQL树中的OUTER APPLY。
 ///         An expression that represents an OUTER APPLY in a SQL tree.
 ///     </para>
 ///     <para>

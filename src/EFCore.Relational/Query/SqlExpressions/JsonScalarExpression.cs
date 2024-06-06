@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
 ///     <para>
+///       一个表达式，表示从SQL树中具有给定路径的JSON列中提取的标量。
 ///         An expression representing a scalar extracted from a JSON column with the given path in SQL tree.
 ///     </para>
 ///     <para>
