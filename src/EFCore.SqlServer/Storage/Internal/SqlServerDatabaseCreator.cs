@@ -363,6 +363,7 @@ SELECT 1 ELSE SELECT 0");
             .ConfigureAwait(false);
     }
 
+   //Éú³ÉdropÃüÁî
     private IReadOnlyList<MigrationCommand> CreateDropCommands()
     {
         var databaseName = _connection.DbConnection.Database;

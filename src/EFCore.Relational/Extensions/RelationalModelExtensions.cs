@@ -8,6 +8,7 @@ namespace Microsoft.EntityFrameworkCore;
 
 /// <summary>
 ///     Relational-specific model extension methods.
+///     返回数据库模型。
 /// </summary>
 /// <remarks>
 ///     See <see href="https://aka.ms/efcore-docs-modeling">Modeling entity types and relationships</see> for more information and examples.
@@ -120,6 +121,7 @@ public static class RelationalModelExtensions
 
     /// <summary>
     ///     Finds a sequence with the given name.
+    ///     查找具有给定名称的序列。
     /// </summary>
     /// <param name="model">The model to find the sequence in.</param>
     /// <param name="name">The sequence name.</param>
@@ -280,6 +282,7 @@ public static class RelationalModelExtensions
     #region DbFunction
 
     /// <summary>
+    ///     查找映射到由给定<see cref="MethodInfo"/>表示的方法的函数。
     ///     Finds a function that is mapped to the method represented by the given <see cref="MethodInfo" />.
     /// </summary>
     /// <param name="model">The model to find the function in.</param>

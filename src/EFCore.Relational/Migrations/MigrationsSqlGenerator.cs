@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore.Internal;
 namespace Microsoft.EntityFrameworkCore.Migrations;
 
 /// <summary>
+/// 在<see cref="MigrationCommand"/>对象中生成SQL，
+/// 然后可以从<see crf="MigrationOperation"/>s的列表中执行或编写这些对象的脚本。
 ///     Generates the SQL in <see cref="MigrationCommand" /> objects that can
 ///     then be executed or scripted from a list of <see cref="MigrationOperation" />s.
 /// </summary>

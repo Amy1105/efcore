@@ -873,6 +873,7 @@ public class RelationalCommand : IRelationalCommand
         => new();
 
     /// <summary>
+    ///     从提供的<paramref name="commandTemplate"/>填充此命令。
     ///     Populates this command from the provided <paramref name="commandTemplate" />.
     /// </summary>
     /// <param name="commandTemplate">A template command from which the command text and parameters will be copied.</param>

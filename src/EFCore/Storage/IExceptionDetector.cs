@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Storage;
 
 /// <summary>
 ///     Used by EF internal code and database providers to detect various types of exceptions.
+///     EF 内部代码和数据库提供程序用于检测各种类型的异常。
 /// </summary>
 /// <remarks>
 ///     <para>

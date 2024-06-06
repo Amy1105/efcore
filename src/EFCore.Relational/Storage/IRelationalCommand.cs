@@ -6,6 +6,7 @@ namespace Microsoft.EntityFrameworkCore.Storage;
 /// <summary>
 ///     <para>
 ///         A command to be executed against a relational database.
+///         要针对关系数据库执行的命令。
 ///     </para>
 ///     <para>
 ///         This type is typically used by database providers (and other extensions). It is generally
@@ -20,6 +21,7 @@ public interface IRelationalCommand : IRelationalCommandTemplate
 {
     /// <summary>
     ///     Executes the command with no results.
+    ///     执行命令，但没有结果。
     /// </summary>
     /// <param name="parameterObject">Parameters for this method.</param>
     /// <returns>The number of rows affected.</returns>
@@ -27,6 +29,7 @@ public interface IRelationalCommand : IRelationalCommandTemplate
 
     /// <summary>
     ///     Asynchronously executes the command with no results.
+    ///     异步执行命令，但没有结果。
     /// </summary>
     /// <param name="parameterObject">Parameters for this method.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> to observe while waiting for the task to complete.</param>
@@ -40,6 +43,7 @@ public interface IRelationalCommand : IRelationalCommandTemplate
 
     /// <summary>
     ///     Executes the command with a single scalar result.
+    ///     使用单个标量结果执行命令。
     /// </summary>
     /// <param name="parameterObject">Parameters for this method.</param>
     /// <returns>The result of the command.</returns>
@@ -47,6 +51,7 @@ public interface IRelationalCommand : IRelationalCommandTemplate
 
     /// <summary>
     ///     Asynchronously executes the command with a single scalar result.
+    ///     使用单个标量结果异步执行命令。
     /// </summary>
     /// <param name="parameterObject">Parameters for this method.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> to observe while waiting for the task to complete.</param>
@@ -60,6 +65,7 @@ public interface IRelationalCommand : IRelationalCommandTemplate
 
     /// <summary>
     ///     Executes the command with a <see cref="RelationalDataReader" /> result.
+    ///     执行命令，结果为<see cref="RelationalDataReader"/>。
     /// </summary>
     /// <param name="parameterObject">Parameters for this method.</param>
     /// <returns>The result of the command.</returns>
@@ -67,6 +73,7 @@ public interface IRelationalCommand : IRelationalCommandTemplate
 
     /// <summary>
     ///     Asynchronously executes the command with a <see cref="RelationalDataReader" /> result.
+    ///     异步执行命令，结果为<see cref="RelationalDataReader"/>。
     /// </summary>
     /// <param name="parameterObject">Parameters for this method.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> to observe while waiting for the task to complete.</param>
@@ -80,6 +87,7 @@ public interface IRelationalCommand : IRelationalCommandTemplate
 
     /// <summary>
     ///     Populates this command from the provided <paramref name="commandTemplate" />.
+    ///     从提供的<paramref name="commandTemplate"/>填充此命令。
     /// </summary>
     /// <param name="commandTemplate">A template command from which the command text and parameters will be copied.</param>
     void PopulateFrom(IRelationalCommandTemplate commandTemplate);

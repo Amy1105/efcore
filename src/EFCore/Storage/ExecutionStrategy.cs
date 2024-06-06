@@ -10,6 +10,8 @@ namespace Microsoft.EntityFrameworkCore.Storage;
 /// </summary>
 /// <remarks>
 ///     <para>
+///     使用寿命为<see cref="ServiceLifetime.Scoped"/>。这意味着每个"DbContext"/>实例都将使用自己的该服务实例。
+///     该实现可能依赖于以任何生存期注册的其他服务。实现不需要是线程安全的。
 ///         The service lifetime is <see cref="ServiceLifetime.Scoped" />. This means that each
 ///         <see cref="DbContext" /> instance will use its own instance of this service.
 ///         The implementation may depend on other services registered with any lifetime.
@@ -24,6 +26,7 @@ public abstract class ExecutionStrategy : IExecutionStrategy
 {
     /// <summary>
     ///     The default number of retry attempts.
+    ///     默认重试次数。
     /// </summary>
     /// <remarks>
     ///     See <see href="https://aka.ms/efcore-docs-connection-resiliency">Connection resiliency and database retries</see>
@@ -33,21 +36,25 @@ public abstract class ExecutionStrategy : IExecutionStrategy
 
     /// <summary>
     ///     The default maximum time delay between retries, must be nonnegative.
+    ///     重试之间的默认最大时间延迟必须为非负。
     /// </summary>
     protected static readonly TimeSpan DefaultMaxDelay = TimeSpan.FromSeconds(30);
 
     /// <summary>
     ///     The default maximum random factor, must not be lesser than 1.
+    ///     默认的最大随机因子不得小于1。
     /// </summary>
     private const double DefaultRandomFactor = 1.1;
 
     /// <summary>
-    ///     The default base for the exponential function used to compute the delay between retries, must be positive.
+    /// 用于计算重试之间延迟的指数函数的默认基数必须为正。
+    /// The default base for the exponential function used to compute the delay between retries, must be positive.
     /// </summary>
     private const double DefaultExponentialBase = 2;
 
     /// <summary>
-    ///     The default coefficient for the exponential function used to compute the delay between retries, must be nonnegative.
+    /// 用于计算重试之间延迟的指数函数的默认系数必须是非负的。
+    /// The default coefficient for the exponential function used to compute the delay between retries, must be nonnegative.
     /// </summary>
     private static readonly TimeSpan DefaultCoefficient = TimeSpan.FromSeconds(1);
 
@@ -103,6 +110,7 @@ public abstract class ExecutionStrategy : IExecutionStrategy
     }
 
     /// <summary>
+    /// 到目前为止导致重试操作的异常列表。
     ///     The list of exceptions that caused the operation to be retried so far.
     /// </summary>
     /// <remarks>
@@ -112,12 +120,14 @@ public abstract class ExecutionStrategy : IExecutionStrategy
     protected virtual List<Exception> ExceptionsEncountered { get; } = new();
 
     /// <summary>
+    /// 一种伪随机数生成器，可用于改变重试之间的延迟。
     ///     A pseudo-random number generator that can be used to vary the delay between retries.
     /// </summary>
     protected virtual Random Random { get; } = new();
 
     /// <summary>
     ///     The maximum number of retry attempts.
+    ///     重试尝试的最大次数。
     /// </summary>
     /// <remarks>
     ///     See <see href="https://aka.ms/efcore-docs-connection-resiliency">Connection resiliency and database retries</see>
@@ -127,6 +137,7 @@ public abstract class ExecutionStrategy : IExecutionStrategy
 
     /// <summary>
     ///     The maximum delay between retries.
+    ///     重试之间的最大延迟。
     /// </summary>
     /// <remarks>
     ///     See <see href="https://aka.ms/efcore-docs-connection-resiliency">Connection resiliency and database retries</see>
@@ -136,12 +147,14 @@ public abstract class ExecutionStrategy : IExecutionStrategy
 
     /// <summary>
     ///     Dependencies for this service.
+    ///     此服务的依赖项。
     /// </summary>
     protected virtual ExecutionStrategyDependencies Dependencies { get; }
 
     private static readonly AsyncLocal<ExecutionStrategy?> CurrentExecutionStrategy = new();
 
     /// <summary>
+    /// 获取或设置当前正在执行的策略。所有嵌套调用都将由最外层的策略处理。
     ///     Gets or sets the currently executing strategy. All nested calls will be handled by the outermost strategy.
     /// </summary>
     /// <remarks>
@@ -155,6 +168,7 @@ public abstract class ExecutionStrategy : IExecutionStrategy
     }
 
     /// <summary>
+    /// 指示此<see cref="IExecutionStrategy"/>是否可能在失败后重试执行。
     ///     Indicates whether this <see cref="IExecutionStrategy" /> might retry the execution after a failure.
     /// </summary>
     /// <remarks>
@@ -171,6 +185,7 @@ public abstract class ExecutionStrategy : IExecutionStrategy
     }
 
     /// <summary>
+    /// 执行指定的操作并返回结果。
     ///     Executes the specified operation and returns the result.
     /// </summary>
     /// <remarks>
@@ -203,6 +218,7 @@ public abstract class ExecutionStrategy : IExecutionStrategy
         OnFirstExecution();
 
         // In order to avoid infinite recursive generics, wrap operation with ExecutionResult
+        //为了避免无限递归泛型，请使用ExecutionResult包装操作
         return ExecuteImplementation(
             (context, state) => new ExecutionResult<TResult>(true, operation(context, state)),
             verifySucceeded,
@@ -265,30 +281,38 @@ public abstract class ExecutionStrategy : IExecutionStrategy
     }
 
     /// <summary>
+    /// 执行指定的异步操作并返回结果。
     ///     Executes the specified asynchronous operation and returns the result.
     /// </summary>
     /// <remarks>
     ///     See <see href="https://aka.ms/efcore-docs-connection-resiliency">Connection resiliency and database retries</see>
     ///     for more information and examples.
     /// </remarks>
-    /// <param name="state">The state that will be passed to the operation.</param>
+    /// <param name="state">The state that will be passed to the operation.将传递给操作的状态。</param>
     /// <param name="operation">
     ///     A function that returns a started task of type <typeparamref name="TResult" />.
+    ///     一个函数，返回类型为<typeparamref name="TResult"/>的已启动任务。
     /// </param>
-    /// <param name="verifySucceeded">A delegate that tests whether the operation succeeded even though an exception was thrown.</param>
+    /// <param name="verifySucceeded">
+    /// A delegate that tests whether the operation succeeded even though an exception was thrown.
+    ///测试操作是否成功（即使引发异常）的委托
+    /// </param>
     /// <param name="cancellationToken">
-    ///     A cancellation token used to cancel the retry operation, but not operations that are already in flight
-    ///     or that already completed successfully.
+    ///  A cancellation token used to cancel the retry operation, but not operations that are already in flight or that already completed successfully.
+    ///   用于取消重试操作的取消令牌，但不包括已在运行或已成功完成的操作。  
     /// </param>
-    /// <typeparam name="TState">The type of the state.</typeparam>
+    /// <typeparam name="TState">状态的类型 The type of the state.</typeparam>
     /// <typeparam name="TResult">The result type of the <see cref="Task{T}" /> returned by <paramref name="operation" />.</typeparam>
     /// <returns>
+    /// 如果原始任务成功完成（第一次或重试短暂故障后），则将运行到完成的任务。如果任务因非暂时性错误而失败，
+    /// 或者达到重试限制，则返回的任务将出现故障，并且必须观察异常。
     ///     A task that will run to completion if the original task completes successfully (either the
     ///     first time or after retrying transient failures). If the task fails with a non-transient error or
     ///     the retry limit is reached, the returned task will become faulted and the exception must be observed.
     /// </returns>
     /// <exception cref="RetryLimitExceededException">
     ///     The operation has not succeeded after the configured number of retries.
+    ///     超过配置的重试次数后，操作未成功。
     /// </exception>
     /// <exception cref="OperationCanceledException">If the <see cref="CancellationToken" /> is canceled.</exception>
     public virtual async Task<TResult> ExecuteAsync<TState, TResult>(
@@ -376,6 +400,7 @@ public abstract class ExecutionStrategy : IExecutionStrategy
     }
 
     /// <summary>
+    /// 在执行第一个操作之前调用的方法
     ///     Method called before the first operation execution
     /// </summary>
     /// <remarks>
@@ -407,6 +432,7 @@ public abstract class ExecutionStrategy : IExecutionStrategy
 
     /// <summary>
     ///     Method called before retrying the operation execution
+    ///     在重试操作执行之前调用的方法
     /// </summary>
     /// <remarks>
     ///     See <see href="https://aka.ms/efcore-docs-connection-resiliency">Connection resiliency and database retries</see>
@@ -418,6 +444,7 @@ public abstract class ExecutionStrategy : IExecutionStrategy
 
     /// <summary>
     ///     Determines whether the operation should be retried and the delay before the next attempt.
+    ///     确定是否应重试该操作以及在下一次尝试之前的延迟。
     /// </summary>
     /// <remarks>
     ///     See <see href="https://aka.ms/efcore-docs-connection-resiliency">Connection resiliency and database retries</see>
@@ -447,6 +474,7 @@ public abstract class ExecutionStrategy : IExecutionStrategy
     }
 
     /// <summary>
+    /// 确定在成功执行后是否可以引发指定的异常。
     ///     Determines whether the specified exception could be thrown after a successful execution.
     /// </summary>
     /// <remarks>
@@ -461,6 +489,7 @@ public abstract class ExecutionStrategy : IExecutionStrategy
         => ShouldRetryOn(exception);
 
     /// <summary>
+    /// 确定指定的异常是否表示可以通过重试进行补偿的瞬态故障。
     ///     Determines whether the specified exception represents a transient failure that can be compensated by a retry.
     /// </summary>
     /// <remarks>
@@ -476,6 +505,8 @@ public abstract class ExecutionStrategy : IExecutionStrategy
     /// <summary>
     ///     Recursively gets InnerException from <paramref name="exception" /> as long as it is an
     ///     exception created by Entity Framework and calls <paramref name="exceptionHandler" /> on the innermost one.
+    ///     递归地从＜paramref name=“exception”/＞中获取InnerException，只要它是实体框架创建的异常，
+    ///     并在最里面的一个调用＜paramref name＝“exceptionHandler”/＞。
     /// </summary>
     /// <remarks>
     ///     See <see href="https://aka.ms/efcore-docs-connection-resiliency">Connection resiliency and database retries</see>

@@ -8,6 +8,7 @@ namespace Microsoft.EntityFrameworkCore.Storage;
 
 /// <summary>
 ///     <para>
+///     执行数据库/架构创建和其他相关操作。
 ///         Performs database/schema creation, and other related operations.
 ///     </para>
 ///     <para>
