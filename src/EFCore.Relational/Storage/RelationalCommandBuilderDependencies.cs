@@ -63,6 +63,7 @@ public sealed record RelationalCommandBuilderDependencies
     /// <summary>
     ///     The source for <see cref="RelationalTypeMapping" />s to use.
     /// </summary>
+    /// RelationalCommonBuilder不需要TypeMappingSource。如果需要，派生类应该注入服务。
     [Obsolete("RelationalCommandBuilder doesn't need TypeMappingSource. Derived class should inject the service if needed.")]
     public IRelationalTypeMappingSource TypeMappingSource { get; init; }
 }
