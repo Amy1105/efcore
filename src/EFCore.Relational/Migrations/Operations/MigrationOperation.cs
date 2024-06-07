@@ -4,6 +4,7 @@
 namespace Microsoft.EntityFrameworkCore.Migrations.Operations;
 
 /// <summary>
+///    可以对数据库执行的所有迁移操作的基类。
 ///     Base class for all Migrations operations that can be performed against a database.
 /// </summary>
 /// <remarks>

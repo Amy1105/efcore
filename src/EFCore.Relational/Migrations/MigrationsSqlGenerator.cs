@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 using Microsoft.EntityFrameworkCore.Internal;
 
@@ -135,6 +136,7 @@ public class MigrationsSqlGenerator : IMigrationsSqlGenerator
     }
 
     /// <summary>
+    /// 通过调用给定的 MigrationCommandListBuilder。
     ///     Builds commands for the given <see cref="MigrationOperation" /> by making calls on the given
     ///     <see cref="MigrationCommandListBuilder" />.
     /// </summary>
@@ -158,7 +160,7 @@ public class MigrationsSqlGenerator : IMigrationsSqlGenerator
             throw new InvalidOperationException(RelationalStrings.UnknownOperation(GetType().ShortDisplayName(), operationType));
         }
 
-        generateAction(this, operation, model, builder);
+        generateAction(this, operation, model, builder);  //这个指向的具体方法是？
     }
 
     /// <summary>
@@ -860,6 +862,7 @@ public class MigrationsSqlGenerator : IMigrationsSqlGenerator
     }
 
     /// <summary>
+    /// 生成与给定操作相对应的命令。
     ///     Generates the commands that correspond to the given operation.
     /// </summary>
     /// <param name="operation">The data operation to generate commands for.</param>

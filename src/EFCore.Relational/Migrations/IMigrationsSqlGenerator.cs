@@ -1,9 +1,12 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Runtime.Intrinsics.X86;
+
 namespace Microsoft.EntityFrameworkCore.Migrations;
 
 /// <summary>
+/// 用于生成MigrationCommand对象的服务，这些对象可以然后从MigrationOperations的列表中执行或编写脚本。
 ///     A service for generating <see cref="MigrationCommand" /> objects that can
 ///     then be executed or scripted from a list of <see cref="MigrationOperation" />s.
 /// </summary>

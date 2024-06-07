@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure;
 
 /// <summary>
 ///     <para>
+///     可以存储在实现IReadOnlyAnnotable的对象上的任意元数据。
 ///         An arbitrary piece of metadata that can be stored on an object that implements <see cref="IReadOnlyAnnotatable" />.
 ///     </para>
 ///     <para>

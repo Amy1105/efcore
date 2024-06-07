@@ -5,9 +5,11 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure;
 
 /// <summary>
 ///     <para>
+///     公开生成时和运行时注释的类。注释允许在对象上存储任意元数据。
 ///         A class that exposes build-time and run-time annotations. Annotations allow for arbitrary metadata to be stored on an object.
 ///     </para>
 ///     <para>
+///     此接口通常由数据库提供程序（和其他扩展）使用。一般来说未在应用程序代码中使用。
 ///         This interface is typically used by database providers (and other extensions). It is generally
 ///         not used in application code.
 ///     </para>

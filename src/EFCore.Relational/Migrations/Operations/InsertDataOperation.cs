@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Runtime.Intrinsics.X86;
+
 namespace Microsoft.EntityFrameworkCore.Migrations.Operations;
 
 /// <summary>
@@ -33,6 +35,7 @@ public class InsertDataOperation : MigrationOperation, ITableMigrationOperation
     public virtual string[]? ColumnTypes { get; set; }
 
     /// <summary>
+    /// 二维数组，【行，每行数据的各个字段值】要插入的数据，表示为值数组列表，其中每个数组中的值对应于"Columns" 属性中的列。
     ///     The data to be inserted, represented as a list of value arrays where each
     ///     value in the array corresponds to a column in the <see cref="Columns" /> property.
     /// </summary>

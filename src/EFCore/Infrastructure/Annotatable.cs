@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure;
 
 /// <summary>
 ///     <para>
+///         支持读写注释的类型的基类。
 ///         Base class for types that support reading and writing annotations.
 ///     </para>
 ///     <para>
