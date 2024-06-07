@@ -4,6 +4,7 @@
 namespace Microsoft.EntityFrameworkCore.Migrations;
 
 /// <summary>
+/// 一种用于对数据库执行迁移命令的服务。
 ///     A service for executing migration commands against a database.
 /// </summary>
 /// <remarks>

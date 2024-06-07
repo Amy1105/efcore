@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Storage;
 
 /// <summary>
 ///     <para>
+///     公开 DatabaseFacade 及其关系扩展方法所需的依赖项。
 ///         Exposes dependencies needed by <see cref="DatabaseFacade" /> and its relational extension methods.
 ///     </para>
 ///     <para>

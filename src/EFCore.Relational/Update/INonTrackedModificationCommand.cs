@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Update;
 
 /// <summary>
 ///     <para>
+///     表示用于插入/更新/删除行的可变概念数据库命令。
 ///         Represents a mutable conceptual database command to insert/update/delete a row.
 ///     </para>
 ///     <para>

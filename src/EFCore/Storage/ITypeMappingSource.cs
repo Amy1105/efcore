@@ -5,13 +5,17 @@ namespace Microsoft.EntityFrameworkCore.Storage;
 
 /// <summary>
 ///     <para>
+///     核心类型映射源。类型映射描述提供程序如何将CLR类型/值映射到数据库类型/值。
 ///         The core type mapping source. Type mappings describe how a provider maps CLR types/values to database types/values.
 ///     </para>
 ///     <para>
+///     这种类型通常由数据库提供程序（和其他扩展）使用。一般来说未在应用程序代码中使用。
 ///         This type is typically used by database providers (and other extensions). It is generally
 ///         not used in application code.
 ///     </para>
 ///     <para>
+///     警告：不要直接实现此接口。相反，从 TypeMappingSourceBase 派生对于非关系提供程序，
+///     或对于关系提供程序为“RelationalTypeMappingSource”。
 ///         Warning: do not implement this interface directly. Instead, derive from <see cref="TypeMappingSourceBase" />
 ///         for non-relational providers, or 'RelationalTypeMappingSource' for relational providers.
 ///     </para>

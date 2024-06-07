@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Update;
 
 /// <summary>
 ///     <para>
+///     ´´½¨ IModificationCommand ÊµÀý
 ///         A service for creating <see cref="IModificationCommand" /> instances.
 ///     </para>
 ///     <para>

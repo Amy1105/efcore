@@ -4,6 +4,7 @@
 namespace Microsoft.EntityFrameworkCore.Migrations;
 
 /// <summary>
+/// 表示包含EF核心迁移的程序集的服务。
 ///     A service representing an assembly containing EF Core Migrations.
 /// </summary>
 /// <remarks>

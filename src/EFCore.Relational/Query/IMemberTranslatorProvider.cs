@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
+/// 提供LINQ表达式的翻译。
 ///     Provides translations for LINQ <see cref="MemberExpression" /> expressions.
 /// </summary>
 /// <remarks>

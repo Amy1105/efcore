@@ -1,16 +1,19 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 
 namespace Microsoft.EntityFrameworkCore.Update;
 
 /// <summary>
 ///     <para>
+///     用于为插入、更新和删除命令以及相关SQL生成SQL的服务 DbContext.SaveChanges（）所需的操作
 ///         A service used to generate SQL for insert, update, and delete commands, and related SQL
 ///         operations needed for <see cref="DbContext.SaveChanges()" />
 ///     </para>
 ///     <para>
+///     这种类型通常由数据库提供程序使用；它通常不用于应用程序代码。
 ///         This type is typically used by database providers; it is generally not used in application code.
 ///     </para>
 /// </summary>

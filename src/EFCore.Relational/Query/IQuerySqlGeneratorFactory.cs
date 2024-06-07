@@ -4,6 +4,7 @@
 namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
+/// 用于创建 QuerySqlGenerator 的工厂。
 ///     A factory for creating <see cref="QuerySqlGenerator" /> instances.
 /// </summary>
 /// <remarks>

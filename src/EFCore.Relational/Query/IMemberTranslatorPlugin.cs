@@ -4,6 +4,7 @@
 namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
+/// 表示 IMemberTranslator 的插件。
 ///     Represents plugin for <see cref="IMemberTranslator" />.
 /// </summary>
 /// <remarks>

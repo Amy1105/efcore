@@ -4,6 +4,7 @@
 namespace Microsoft.EntityFrameworkCore.Migrations;
 
 /// <summary>
+/// 一种服务，用于查找两个 IRelationModel 之间的差异，并将这些差异转换为可用于更新数据库的 MigrationOperation />。
 ///     A service for finding differences between two <see cref="IRelationalModel" />s and transforming
 ///     those differences into <see cref="MigrationOperation" />s that can be used to
 ///     update the database.

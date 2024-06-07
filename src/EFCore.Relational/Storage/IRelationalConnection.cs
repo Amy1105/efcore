@@ -7,6 +7,7 @@ namespace Microsoft.EntityFrameworkCore.Storage;
 
 /// <summary>
 ///     <para>
+///     表示与关系数据库的连接。
 ///         Represents a connection with a relational database.
 ///     </para>
 ///     <para>

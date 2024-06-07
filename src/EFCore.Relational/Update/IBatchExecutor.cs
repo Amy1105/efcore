@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Update;
 
 /// <summary>
 ///     <para>
+///     一种服务，用于对数据库执行一批或多批插入/更新/删除命令。
 ///         A service for executing one or more batches of insert/update/delete commands against a database.
 ///     </para>
 ///     <para>

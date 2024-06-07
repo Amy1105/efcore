@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
 ///     <para>
+///     由数据库提供程序实现，以生成 EntityFrameworkQueryableExtensions.ToQueryString 的查询字符串。
 ///         Implemented by database providers to generate the query string for <see cref="EntityFrameworkQueryableExtensions.ToQueryString" />.
 ///     </para>
 ///     <para>

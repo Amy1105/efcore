@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
+///     为表示聚合方法的LINQ表达式提供翻译。
 ///     Provides translations for LINQ <see cref="MethodCallExpression" /> expressions which represents aggregate methods.
 /// </summary>
 /// <remarks>

@@ -1,9 +1,13 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Microsoft.EntityFrameworkCore.Metadata;
+using System.Runtime.Intrinsics.X86;
+
 namespace Microsoft.EntityFrameworkCore.Migrations;
 
 /// <summary>
+/// 数据库提供程序继承的基类，用于访问EF Core迁移使用的注释为 IRelationModel 的各种元素生成删除操作时。
 ///     A base class inherited by database providers that gives access to annotations used by EF Core Migrations
 ///     when generating removal operations for various elements of the <see cref="IRelationalModel" />.
 /// </summary>

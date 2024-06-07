@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure;
 
 /// <summary>
 ///     <para>
+///     此接口必须由需要在之间重置的任何服务实现在不同的池中使用相同的 DbContext 。
 ///         This interface must be implemented by any service that needs to be reset between
 ///         different uses of the same <see cref="DbContext" /> in different pools.
 ///     </para>

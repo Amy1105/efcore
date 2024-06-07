@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Storage;
 
 /// <summary>
 ///     <para>
+///     用于创建实例的工厂。
 ///         A factory for creating <see cref="RelationalTransaction" /> instances.
 ///     </para>
 ///     <para>

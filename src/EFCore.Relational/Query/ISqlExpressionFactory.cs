@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
+///  创建SqlExpression实例的工厂
 ///     A factory for creating <see cref="SqlExpression" /> instances.
 /// </summary>
 /// <remarks>

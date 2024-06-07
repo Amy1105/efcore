@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Storage;
 
 /// <summary>
 ///     <para>
+///     关系类型映射源。类型映射描述提供程序如何将CLR类型/值映射到数据库类型/值。
 ///         The relational type mapping source. Type mappings describe how a provider maps CLR types/values to database types/values.
 ///     </para>
 ///     <para>

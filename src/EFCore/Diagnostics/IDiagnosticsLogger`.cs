@@ -1,9 +1,13 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Runtime.Intrinsics.X86;
+
 namespace Microsoft.EntityFrameworkCore.Diagnostics;
 
 /// <summary>
+/// 组合ILogger和DiagnosticSource供所有EF Core日志记录使用，以便将事件发送到两者ILogger对于ASP。
+/// NET和 DiagnosticSource 了解其他内容。
 ///     Combines <see cref="ILogger" /> and <see cref="DiagnosticSource" />
 ///     for use by all EF Core logging so that events can be sent to both <see cref="ILogger" />
 ///     for ASP.NET and <see cref="DiagnosticSource" /> for everything else.

@@ -4,6 +4,7 @@
 namespace Microsoft.EntityFrameworkCore.Migrations;
 
 /// <summary>
+/// 一种用于从名称生成迁移标识符和从标识符生成名称的服务。
 ///     A service for generating migration identifiers from names and names from identifiers.
 /// </summary>
 /// <remarks>

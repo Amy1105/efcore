@@ -1,9 +1,12 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Runtime.Intrinsics.X86;
+
 namespace Microsoft.EntityFrameworkCore.Metadata;
 
 /// <summary>
+/// 一种服务，通常由数据库提供程序实现，提供对注释的访问权限由关系EF核心组件在 IRelationModel 的各个元素上使用。
 ///     A service typically implemented by database providers that gives access to annotations
 ///     used by relational EF Core components on various elements of the <see cref="IRelationalModel" />.
 /// </summary>

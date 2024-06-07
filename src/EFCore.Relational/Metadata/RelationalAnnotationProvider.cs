@@ -4,6 +4,7 @@
 namespace Microsoft.EntityFrameworkCore.Metadata;
 
 /// <summary>
+/// 数据库提供程序继承的基类，用于访问 IReadOnlyModel 的各个元素上的关系EF Core组件所使用的注释。
 ///     A base class inherited by database providers that gives access to annotations
 ///     used by relational EF Core components on various elements of the <see cref="IReadOnlyModel" />.
 /// </summary>

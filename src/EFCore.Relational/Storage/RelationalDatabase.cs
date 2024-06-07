@@ -5,6 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Storage;
 
 /// <summary>
 ///     <para>
+///     上下文和数据库提供程序之间的主要交互点。
 ///         The main interaction point between a context and the database provider.
 ///     </para>
 ///     <para>

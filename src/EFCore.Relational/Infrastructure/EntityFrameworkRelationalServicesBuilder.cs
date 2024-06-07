@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore.Update.Internal;
 namespace Microsoft.EntityFrameworkCore.Infrastructure;
 
 /// <summary>
+/// 为关系数据库提供程序设计的生成器API，用于注册服务。
 ///     A builder API designed for relational database providers to use when registering services.
 /// </summary>
 /// <remarks>

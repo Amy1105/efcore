@@ -4,6 +4,7 @@
 namespace Microsoft.EntityFrameworkCore.Migrations;
 
 /// <summary>
+/// 用于访问跟踪元数据的“__EFMigrationsHistory”表的存储库接口关于EF核心迁移，例如应用了哪些迁移。
 ///     An interface for the repository used to access the '__EFMigrationsHistory' table that tracks metadata
 ///     about EF Core Migrations such as which migrations have been applied.
 /// </summary>

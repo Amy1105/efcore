@@ -4,6 +4,7 @@
 namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
+/// 表示 IMethodCallTranslator 的插件。
 ///     Represents plugin for <see cref="IMethodCallTranslator" />.
 /// </summary>
 /// <remarks>

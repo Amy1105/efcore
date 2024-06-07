@@ -4,6 +4,7 @@
 namespace Microsoft.EntityFrameworkCore.Storage;
 
 /// <summary>
+/// 表示插件关系类型映射源。
 ///     Represents a plugin relational type mapping source.
 /// </summary>
 /// <remarks>

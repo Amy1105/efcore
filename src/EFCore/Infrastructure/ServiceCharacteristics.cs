@@ -4,6 +4,7 @@
 namespace Microsoft.EntityFrameworkCore.Infrastructure;
 
 /// <summary>
+/// 给定EF服务的特征。
 ///     Characteristics of a given EF service.
 /// </summary>
 /// <remarks>
