@@ -121,6 +121,14 @@ public static class CoreAnnotationNames
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    public const string EmbeddedDiscriminatorName = "EmbeddedDiscriminatorName";
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
     public const string ValueConverter = "ValueConverter";
 
     /// <summary>
@@ -193,15 +201,6 @@ public static class CoreAnnotationNames
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    [Obsolete] // Remove with defining query
-    public const string DefiningQuery = "DefiningQuery";
-
-    /// <summary>
-    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
-    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
-    ///     any release. You should only use it directly in your code with extreme caution and knowing that
-    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
-    /// </summary>
     public const string EagerLoaded = "EagerLoaded";
 
     /// <summary>
@@ -258,7 +257,7 @@ public static class CoreAnnotationNames
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public const string InverseNavigationCandidates = "RelationshipDiscoveryConvention:InverseNavigationCandidates";
+    public const string InverseNavigationsNoAttribute = "RelationshipDiscoveryConvention:InverseNavigationsNoAttribute";
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -267,6 +266,22 @@ public static class CoreAnnotationNames
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public const string NavigationCandidates = "RelationshipDiscoveryConvention:NavigationCandidates";
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public const string NavigationCandidatesNoAttribute = "RelationshipDiscoveryConvention:NavigationCandidatesNoAttribute";
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public const string ComplexCandidates = "ComplexPropertyDiscoveryConvention:ComplexCandidates";
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -330,6 +345,38 @@ public static class CoreAnnotationNames
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    public const string ElementType = "ElementType";
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public const string SkipNavigationBeingConfigured = "SkipNavigationBeingConfigured";
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public const string UnsafeAccessors = "UnsafeAccessors";
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public const string NonNullableConventionState = "NonNullableConventionState";
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
     public static readonly ISet<string> AllNames = new HashSet<string>
     {
         MaxLength,
@@ -345,6 +392,7 @@ public static class CoreAnnotationNames
         DiscriminatorProperty,
         DiscriminatorMappingComplete,
         DiscriminatorValue,
+        EmbeddedDiscriminatorName,
         ValueConverter,
         ValueConverterType,
         ValueComparer,
@@ -354,24 +402,27 @@ public static class CoreAnnotationNames
         AfterSaveBehavior,
         BeforeSaveBehavior,
         QueryFilter,
-#pragma warning disable CS0612 // Type or member is obsolete
-        DefiningQuery,
-#pragma warning restore CS0612 // Type or member is obsolete
         EagerLoaded,
         LazyLoadingEnabled,
         ProviderClrType,
         ModelDependencies,
         ReadOnlyModel,
         PreUniquificationName,
-        InverseNavigations,
         DerivedTypes,
-        InverseNavigationCandidates,
+        InverseNavigations,
+        InverseNavigationsNoAttribute,
         NavigationCandidates,
+        NavigationCandidatesNoAttribute,
+        ComplexCandidates,
         AmbiguousNavigations,
         AmbiguousField,
         DuplicateServiceProperties,
         FullChangeTrackingNotificationsRequired,
         AdHocModel,
-        JsonValueReaderWriterType
+        JsonValueReaderWriterType,
+        ElementType,
+        SkipNavigationBeingConfigured,
+        UnsafeAccessors,
+        NonNullableConventionState
     };
 }

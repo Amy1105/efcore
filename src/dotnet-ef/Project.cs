@@ -2,6 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Tools.Properties;
 
 namespace Microsoft.EntityFrameworkCore.Tools;
@@ -42,75 +44,61 @@ internal class Project
 
     public static Project FromFile(
         string file,
-        string? buildExtensionsDir,
         string? framework = null,
         string? configuration = null,
         string? runtime = null)
     {
         Debug.Assert(!string.IsNullOrEmpty(file), "file is null or empty.");
 
-        buildExtensionsDir ??= Path.Combine(Path.GetDirectoryName(file)!, "obj");
-
-        Directory.CreateDirectory(buildExtensionsDir);
-
-        var efTargetsPath = Path.Combine(
-            buildExtensionsDir,
-            Path.GetFileName(file) + ".EntityFrameworkCore.targets");
-        using (var input = typeof(Resources).Assembly.GetManifestResourceStream(
-                   "Microsoft.EntityFrameworkCore.Tools.Resources.EntityFrameworkCore.targets")!)
-        using (var output = File.OpenWrite(efTargetsPath))
-        {
-            // NB: Copy always in case it changes
-            Reporter.WriteVerbose(Resources.WritingFile(efTargetsPath));
-            input.CopyTo(output);
-        }
-
         IDictionary<string, string> metadata;
         var metadataFile = Path.GetTempFileName();
         try
         {
-            var propertyArg = "/property:EFProjectMetadataFile=" + metadataFile;
+            var args = new List<string>
+            {
+                "msbuild",
+            };
+
             if (framework != null)
             {
-                propertyArg += ";TargetFramework=" + framework;
+                args.Add($"/property:TargetFramework={framework}");
             }
 
             if (configuration != null)
             {
-                propertyArg += ";Configuration=" + configuration;
+                args.Add($"/property:Configuration={configuration}");
             }
 
             if (runtime != null)
             {
-                propertyArg += ";RuntimeIdentifier=" + runtime;
+                args.Add($"/property:RuntimeIdentifier={runtime}");
             }
 
-            var args = new List<string>
+            foreach (var property in typeof(Project).GetProperties())
             {
-                "msbuild",
-                "/target:GetEFProjectMetadata",
-                propertyArg,
-                "/verbosity:quiet",
-                "/nologo"
-            };
+                args.Add($"/getProperty:{property.Name}");
+            }
+
+            args.Add("/getProperty:Platform");
 
             args.Add(file);
 
-            var exitCode = Exe.Run("dotnet", args);
+            var output = new StringBuilder();
+
+            var exitCode = Exe.Run("dotnet", args, handleOutput: line => output.AppendLine(line));
             if (exitCode != 0)
             {
                 throw new CommandException(Resources.GetMetadataFailed);
             }
 
-            metadata = File.ReadLines(metadataFile).Select(l => l.Split(new[] { ':' }, 2))
-                .ToDictionary(s => s[0], s => s[1].TrimStart());
+            metadata = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string>>>(output.ToString())!["Properties"];
         }
         finally
         {
             File.Delete(metadataFile);
         }
 
-        var platformTarget = metadata["PlatformTarget"];
+        var platformTarget = metadata[nameof(PlatformTarget)];
         if (platformTarget.Length == 0)
         {
             platformTarget = metadata["Platform"];
@@ -118,23 +106,23 @@ internal class Project
 
         return new Project(file, framework, configuration, runtime)
         {
-            AssemblyName = metadata["AssemblyName"],
-            Language = metadata["Language"],
-            OutputPath = metadata["OutputPath"],
+            AssemblyName = metadata[nameof(AssemblyName)],
+            Language = metadata[nameof(Language)],
+            OutputPath = metadata[nameof(OutputPath)],
             PlatformTarget = platformTarget,
-            ProjectAssetsFile = metadata["ProjectAssetsFile"],
-            ProjectDir = metadata["ProjectDir"],
-            RootNamespace = metadata["RootNamespace"],
-            RuntimeFrameworkVersion = metadata["RuntimeFrameworkVersion"],
-            TargetFileName = metadata["TargetFileName"],
-            TargetFrameworkMoniker = metadata["TargetFrameworkMoniker"],
-            Nullable = metadata["Nullable"],
-            TargetFramework = metadata["TargetFramework"],
-            TargetPlatformIdentifier = metadata["TargetPlatformIdentifier"]
+            ProjectAssetsFile = metadata[nameof(ProjectAssetsFile)],
+            ProjectDir = metadata[nameof(ProjectDir)],
+            RootNamespace = metadata[nameof(RootNamespace)],
+            RuntimeFrameworkVersion = metadata[nameof(RuntimeFrameworkVersion)],
+            TargetFileName = metadata[nameof(TargetFileName)],
+            TargetFrameworkMoniker = metadata[nameof(TargetFrameworkMoniker)],
+            Nullable = metadata[nameof(Nullable)],
+            TargetFramework = metadata[nameof(TargetFramework)],
+            TargetPlatformIdentifier = metadata[nameof(TargetPlatformIdentifier)]
         };
     }
 
-    public void Build()
+    public void Build(IEnumerable<string>? additionalArgs)
     {
         var args = new List<string> { "build" };
 
@@ -164,8 +152,13 @@ internal class Project
 
         args.Add("/verbosity:quiet");
         args.Add("/nologo");
+        args.Add("/p:PublishAot=false"); // Avoid NativeAOT warnings
+        if (additionalArgs != null)
+        {
+            args.AddRange(additionalArgs);
+        }
 
-        var exitCode = Exe.Run("dotnet", args, interceptOutput: true);
+        var exitCode = Exe.Run("dotnet", args, handleOutput: Reporter.WriteVerbose);
         if (exitCode != 0)
         {
             throw new CommandException(Resources.BuildFailed);

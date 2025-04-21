@@ -311,12 +311,10 @@ public class PropertyTest
             => null;
     }
 
-    private class NonParameterlessValueGeneratorFactory : ValueGeneratorFactory
+#pragma warning disable CS9113 // Parameter '_' is unread
+    private class NonParameterlessValueGeneratorFactory(object _) : ValueGeneratorFactory
+#pragma warning restore CS9113
     {
-        public NonParameterlessValueGeneratorFactory(object _)
-        {
-        }
-
         public override ValueGenerator Create(IProperty property, ITypeBase typeBase)
             => null;
     }
@@ -360,13 +358,9 @@ public class PropertyTest
                     property.SetValueConverter(typeof(NonParameterlessValueConverter))).Message);
     }
 
-    private class NonDerivedValueConverter
-    {
-    }
+    private class NonDerivedValueConverter;
 
-    private abstract class AbstractValueConverter : StringToBoolConverter
-    {
-    }
+    private abstract class AbstractValueConverter : StringToBoolConverter;
 
     private class StaticValueConverter : StringToBoolConverter
     {
@@ -382,13 +376,7 @@ public class PropertyTest
         }
     }
 
-    private class NonParameterlessValueConverter : StringToBoolConverter
-    {
-        public NonParameterlessValueConverter(ConverterMappingHints mappingHints = null)
-            : base(mappingHints)
-        {
-        }
-    }
+    private class NonParameterlessValueConverter(ConverterMappingHints mappingHints = null) : StringToBoolConverter(mappingHints);
 
     [ConditionalFact]
     public void Throws_when_ValueComparer_type_is_invalid()
@@ -429,17 +417,9 @@ public class PropertyTest
                     property.SetValueComparer(typeof(NonParameterlessValueComparer))).Message);
     }
 
-    private class NonDerivedValueComparer
-    {
-    }
+    private class NonDerivedValueComparer;
 
-    private abstract class AbstractValueComparer : ValueComparer<string>
-    {
-        public AbstractValueComparer()
-            : base(false)
-        {
-        }
-    }
+    private abstract class AbstractValueComparer() : ValueComparer<string>(false);
 
     private class StaticValueComparer : ValueComparer<string>
     {
@@ -457,13 +437,7 @@ public class PropertyTest
         }
     }
 
-    private class NonParameterlessValueComparer : ValueComparer<string>
-    {
-        public NonParameterlessValueComparer(bool favorStructuralComparison)
-            : base(favorStructuralComparison)
-        {
-        }
-    }
+    private class NonParameterlessValueComparer(bool favorStructuralComparison) : ValueComparer<string>(favorStructuralComparison);
 
     [ConditionalTheory]
     [InlineData(typeof(SimpleJasonValueReaderWriter))]
@@ -531,46 +505,100 @@ public class PropertyTest
                 () => property.GetJsonValueReaderWriter()).Message);
     }
 
+    [ConditionalFact]
+    public void Can_set_element_type_for_primitive_collection()
+    {
+        var model = CreateModel();
+        var entityType = model.AddEntityType(typeof(object));
+        var property = entityType.AddProperty("Random", typeof(IList<int>));
+        property.SetElementType(typeof(int));
+
+        Assert.Equal(typeof(int), property.GetElementType()!.ClrType);
+        Assert.True(property.IsPrimitiveCollection);
+    }
+
+    [ConditionalFact]
+    public void Can_set_derived_element_type_for_primitive_collection()
+    {
+        var model = CreateModel();
+        var entityType = model.AddEntityType(typeof(object));
+        var property = entityType.AddProperty("Random", typeof(IList<object>));
+        property.SetElementType(typeof(int));
+
+        Assert.Equal(typeof(int), property.GetElementType()!.ClrType);
+        Assert.True(property.IsPrimitiveCollection);
+    }
+
+    [ConditionalFact]
+    public void Can_set_element_type_for_non_primitive_collection()
+    {
+        var model = CreateModel();
+        var entityType = model.AddEntityType(typeof(object));
+        var property = entityType.AddProperty("Random", typeof(Random));
+        property.SetElementType(typeof(int));
+
+        Assert.Equal(typeof(int), property.GetElementType()!.ClrType);
+        Assert.False(property.IsPrimitiveCollection);
+    }
+
     private class SimpleJasonValueReaderWriter : JsonValueReaderWriter<string>
     {
-        public override string FromJsonTyped(ref Utf8JsonReaderManager manager)
+        public override string FromJsonTyped(ref Utf8JsonReaderManager manager, object existingObject = null)
             => manager.CurrentReader.GetString()!;
 
         public override void ToJsonTyped(Utf8JsonWriter writer, string value)
             => writer.WriteStringValue(value);
+
+        private readonly Expression<Func<SimpleJasonValueReaderWriter>> _instanceLambda = () => new SimpleJasonValueReaderWriter();
+
+        public override Expression ConstructorExpression
+            => _instanceLambda.Body;
     }
 
     private class JasonValueReaderWriterWithPrivateInstance : JsonValueReaderWriter<string>
     {
         private static JasonValueReaderWriterWithPrivateInstance Instance { get; } = new();
 
-        public override string FromJsonTyped(ref Utf8JsonReaderManager manager)
+        public override string FromJsonTyped(ref Utf8JsonReaderManager manager, object existingObject = null)
             => manager.CurrentReader.GetString()!;
 
         public override void ToJsonTyped(Utf8JsonWriter writer, string value)
             => writer.WriteStringValue(value);
+
+        private readonly Expression<Func<JasonValueReaderWriterWithPrivateInstance>> _instanceLambda = () => Instance;
+
+        public override Expression ConstructorExpression
+            => _instanceLambda.Body;
     }
 
     private class JasonValueReaderWriterWithBadInstance : JsonValueReaderWriter<string>
     {
         public static object Instance { get; } = new();
 
-        public override string FromJsonTyped(ref Utf8JsonReaderManager manager)
+        public override string FromJsonTyped(ref Utf8JsonReaderManager manager, object existingObject = null)
             => manager.CurrentReader.GetString()!;
 
         public override void ToJsonTyped(Utf8JsonWriter writer, string value)
             => writer.WriteStringValue(value);
+
+        public override Expression ConstructorExpression
+            => Expression.Default(typeof(JasonValueReaderWriterWithBadInstance));
     }
 
     private class SimpleJasonValueReaderWriterWithInstance : JsonValueReaderWriter<string>
     {
         public static SimpleJasonValueReaderWriterWithInstance Instance { get; } = new();
 
-        public override string FromJsonTyped(ref Utf8JsonReaderManager manager)
+        public override string FromJsonTyped(ref Utf8JsonReaderManager manager, object existingObject = null)
             => manager.CurrentReader.GetString()!;
 
         public override void ToJsonTyped(Utf8JsonWriter writer, string value)
             => writer.WriteStringValue(value);
+
+        private readonly Expression<Func<SimpleJasonValueReaderWriterWithInstance>> _instanceLambda = () => Instance;
+
+        public override Expression ConstructorExpression
+            => _instanceLambda.Body;
     }
 
     private class SimpleJasonValueReaderWriterWithInstanceAndPrivateConstructor : JsonValueReaderWriter<string>
@@ -581,20 +609,23 @@ public class PropertyTest
         {
         }
 
-        public override string FromJsonTyped(ref Utf8JsonReaderManager manager)
+        public override string FromJsonTyped(ref Utf8JsonReaderManager manager, object existingObject = null)
             => manager.CurrentReader.GetString()!;
 
         public override void ToJsonTyped(Utf8JsonWriter writer, string value)
             => writer.WriteStringValue(value);
+
+        private readonly Expression<Func<SimpleJasonValueReaderWriterWithInstanceAndPrivateConstructor>> _instanceLambda = () => Instance;
+
+        public override Expression ConstructorExpression
+            => _instanceLambda.Body;
     }
 
-    private class NonDerivedJsonValueReaderWriter
-    {
-    }
+    private class NonDerivedJsonValueReaderWriter;
 
     private class NonGenericJsonValueReaderWriter : JsonValueReaderWriter
     {
-        public override object FromJson(ref Utf8JsonReaderManager manager)
+        public override object FromJson(ref Utf8JsonReaderManager manager, object existingObject = null)
             => manager.CurrentReader.GetString()!;
 
         public override void ToJson(Utf8JsonWriter writer, object value)
@@ -602,11 +633,14 @@ public class PropertyTest
 
         public override Type ValueType
             => typeof(string);
+
+        private readonly Expression<Func<NonGenericJsonValueReaderWriter>> _instanceLambda = () => new NonGenericJsonValueReaderWriter();
+
+        public override Expression ConstructorExpression
+            => _instanceLambda.Body;
     }
 
-    private abstract class AbstractJasonValueReaderWriter : JsonValueReaderWriter<string>
-    {
-    }
+    private abstract class AbstractJasonValueReaderWriter : JsonValueReaderWriter<string>;
 
     private class PrivateJasonValueReaderWriter : JsonValueReaderWriter<string>
     {
@@ -614,24 +648,30 @@ public class PropertyTest
         {
         }
 
-        public override string FromJsonTyped(ref Utf8JsonReaderManager manager)
+        public override string FromJsonTyped(ref Utf8JsonReaderManager manager, object existingObject = null)
             => manager.CurrentReader.GetString()!;
 
         public override void ToJsonTyped(Utf8JsonWriter writer, string value)
             => writer.WriteStringValue(value);
+
+        private readonly Expression<Func<PrivateJasonValueReaderWriter>> _instanceLambda = () => new PrivateJasonValueReaderWriter();
+
+        public override Expression ConstructorExpression
+            => _instanceLambda.Body;
     }
 
-    private class NonParameterlessJsonValueReaderWriter : JsonValueReaderWriter<string>
+    private class NonParameterlessJsonValueReaderWriter(bool _) : JsonValueReaderWriter<string>
     {
-        public NonParameterlessJsonValueReaderWriter(bool _)
-        {
-        }
-
-        public override string FromJsonTyped(ref Utf8JsonReaderManager manager)
+        public override string FromJsonTyped(ref Utf8JsonReaderManager manager, object existingObject = null)
             => manager.CurrentReader.GetString()!;
 
         public override void ToJsonTyped(Utf8JsonWriter writer, string value)
             => writer.WriteStringValue(value);
+
+        private readonly ConstructorInfo _constructorInfo = typeof(NonParameterlessJsonValueReaderWriter).GetConstructor([typeof(bool)])!;
+
+        public override Expression ConstructorExpression
+            => Expression.New(_constructorInfo, Expression.Constant(_));
     }
 
     private static IMutableModel CreateModel()

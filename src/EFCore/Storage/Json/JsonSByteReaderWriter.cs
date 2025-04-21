@@ -10,6 +10,8 @@ namespace Microsoft.EntityFrameworkCore.Storage.Json;
 /// </summary>
 public sealed class JsonSByteReaderWriter : JsonValueReaderWriter<sbyte>
 {
+    private static readonly PropertyInfo InstanceProperty = typeof(JsonSByteReaderWriter).GetProperty(nameof(Instance))!;
+
     /// <summary>
     ///     The singleton instance of this stateless reader/writer.
     /// </summary>
@@ -20,10 +22,14 @@ public sealed class JsonSByteReaderWriter : JsonValueReaderWriter<sbyte>
     }
 
     /// <inheritdoc />
-    public override sbyte FromJsonTyped(ref Utf8JsonReaderManager manager)
+    public override sbyte FromJsonTyped(ref Utf8JsonReaderManager manager, object? existingObject = null)
         => manager.CurrentReader.GetSByte();
 
     /// <inheritdoc />
     public override void ToJsonTyped(Utf8JsonWriter writer, sbyte value)
         => writer.WriteNumberValue(value);
+
+    /// <inheritdoc />
+    public override Expression ConstructorExpression
+        => Expression.Property(null, InstanceProperty);
 }

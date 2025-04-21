@@ -9,29 +9,24 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions;
 /// <remarks>
 ///     See <see href="https://aka.ms/efcore-docs-conventions">Model building conventions</see> for more information and examples.
 /// </remarks>
-public class DiscriminatorConvention : IEntityTypeBaseTypeChangedConvention, IEntityTypeRemovedConvention
+public class DiscriminatorConvention :
+    IEntityTypeBaseTypeChangedConvention,
+    IEntityTypeRemovedConvention,
+    IDiscriminatorPropertySetConvention
 {
     /// <summary>
     ///     Creates a new instance of <see cref="DiscriminatorConvention" />.
     /// </summary>
     /// <param name="dependencies">Parameter object containing dependencies for this convention.</param>
     public DiscriminatorConvention(ProviderConventionSetBuilderDependencies dependencies)
-    {
-        Dependencies = dependencies;
-    }
+        => Dependencies = dependencies;
 
     /// <summary>
     ///     Dependencies for this service.
     /// </summary>
     protected virtual ProviderConventionSetBuilderDependencies Dependencies { get; }
 
-    /// <summary>
-    ///     Called after the base type of an entity type changes.
-    /// </summary>
-    /// <param name="entityTypeBuilder">The builder for the entity type.</param>
-    /// <param name="newBaseType">The new base entity type.</param>
-    /// <param name="oldBaseType">The old base entity type.</param>
-    /// <param name="context">Additional information associated with convention execution.</param>
+    /// <inheritdoc />
     public virtual void ProcessEntityTypeBaseTypeChanged(
         IConventionEntityTypeBuilder entityTypeBuilder,
         IConventionEntityType? newBaseType,
@@ -45,18 +40,15 @@ public class DiscriminatorConvention : IEntityTypeBaseTypeChangedConvention, IEn
         }
 
         var entityType = entityTypeBuilder.Metadata;
-        var derivedEntityTypes = entityType.GetDerivedTypes().ToList();
-
-        IConventionDiscriminatorBuilder? discriminator;
         if (newBaseType == null)
         {
-            if (derivedEntityTypes.Count == 0)
+            if (!entityType.GetDerivedTypes().Any())
             {
                 entityTypeBuilder.HasNoDiscriminator();
                 return;
             }
 
-            discriminator = entityTypeBuilder.HasDiscriminator(typeof(string));
+            entityTypeBuilder.HasDiscriminator(typeof(string));
         }
         else
         {
@@ -65,28 +57,53 @@ public class DiscriminatorConvention : IEntityTypeBaseTypeChangedConvention, IEn
                 return;
             }
 
-            var rootTypeBuilder = entityType.GetRootType().Builder;
-            discriminator = rootTypeBuilder.HasDiscriminator(typeof(string));
-
-            if (newBaseType.BaseType == null)
+            var rootType = entityType.GetRootType();
+            if (rootType.FindDiscriminatorProperty() == null)
             {
-                discriminator?.HasValue(newBaseType, newBaseType.GetDefaultDiscriminatorValue());
+                rootType.Builder.HasDiscriminator(typeof(string));
             }
-        }
-
-        if (discriminator != null)
-        {
-            discriminator.HasValue(entityTypeBuilder.Metadata, entityTypeBuilder.Metadata.GetDefaultDiscriminatorValue());
-            SetDefaultDiscriminatorValues(derivedEntityTypes, discriminator);
+            else
+            {
+                var discriminator = entityTypeBuilder.HasDiscriminator(typeof(string));
+                if (discriminator != null)
+                {
+                    SetDefaultDiscriminatorValues(entityTypeBuilder.Metadata.GetDerivedTypesInclusive(), discriminator);
+                }
+            }
         }
     }
 
-    /// <summary>
-    ///     Called after an entity type is removed from the model.
-    /// </summary>
-    /// <param name="modelBuilder">The builder for the model.</param>
-    /// <param name="entityType">The removed entity type.</param>
-    /// <param name="context">Additional information associated with convention execution.</param>
+    /// <inheritdoc />
+    public virtual void ProcessDiscriminatorPropertySet(
+        IConventionTypeBaseBuilder structuralTypeBuilder,
+        string? name,
+        IConventionContext<string> context)
+    {
+        if (name == null)
+        {
+            return;
+        }
+
+        if (structuralTypeBuilder is IConventionEntityTypeBuilder entityTypeBuilder)
+        {
+            var discriminator = entityTypeBuilder.HasDiscriminator(name, typeof(string));
+            if (discriminator != null)
+            {
+                SetDefaultDiscriminatorValues(entityTypeBuilder.Metadata.GetDerivedTypesInclusive(), discriminator);
+            }
+        }
+        else
+        {
+            var complexTypeBuilder = (IConventionComplexTypeBuilder)structuralTypeBuilder;
+            var discriminator = complexTypeBuilder.HasDiscriminator(name, typeof(string));
+            if (discriminator != null)
+            {
+                SetDefaultDiscriminatorValue(complexTypeBuilder.Metadata, discriminator);
+            }
+        }
+    }
+
+    /// <inheritdoc />
     public virtual void ProcessEntityTypeRemoved(
         IConventionModelBuilder modelBuilder,
         IConventionEntityType entityType,
@@ -115,5 +132,17 @@ public class DiscriminatorConvention : IEntityTypeBaseTypeChangedConvention, IEn
         {
             discriminatorBuilder.HasValue(entityType, entityType.GetDefaultDiscriminatorValue());
         }
+    }
+
+    /// <summary>
+    ///     Configures the discriminator value for the given complex type.
+    /// </summary>
+    /// <param name="complexType">The complex type to configure.</param>
+    /// <param name="discriminatorBuilder">The discriminator builder.</param>
+    protected virtual void SetDefaultDiscriminatorValue(
+        IConventionComplexType complexType,
+        IConventionComplexTypeDiscriminatorBuilder discriminatorBuilder)
+    {
+        discriminatorBuilder.HasValue(complexType.GetDefaultDiscriminatorValue());
     }
 }

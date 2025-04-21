@@ -14,6 +14,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions;
 public class NonNullableReferencePropertyConvention : NonNullableConventionBase,
     IPropertyAddedConvention,
     IPropertyFieldChangedConvention,
+    IPropertyElementTypeChangedConvention,
     IComplexPropertyAddedConvention,
     IComplexPropertyFieldChangedConvention
 {
@@ -29,16 +30,29 @@ public class NonNullableReferencePropertyConvention : NonNullableConventionBase,
     private void Process(IConventionPropertyBuilder propertyBuilder)
     {
         if (propertyBuilder.Metadata.GetIdentifyingMemberInfo() is MemberInfo memberInfo
-            && IsNonNullableReferenceType(propertyBuilder.ModelBuilder, memberInfo))
+            && TryGetNullabilityInfo(propertyBuilder.ModelBuilder, memberInfo, out var nullabilityInfo))
         {
-            propertyBuilder.IsRequired(true);
+            if (nullabilityInfo.ReadState == NullabilityState.NotNull)
+            {
+                propertyBuilder.IsRequired(true);
+            }
+
+            // If there's an element type, this is a primitive collection; check and apply the element's nullability as well.
+            if (propertyBuilder.Metadata.GetElementType() is IConventionElementType elementType
+                && nullabilityInfo is
+                    { ElementType.ReadState: NullabilityState.NotNull } or
+                    { GenericTypeArguments: [{ ReadState: NullabilityState.NotNull }] })
+            {
+                elementType.SetIsNullable(false);
+            }
         }
     }
 
     private void Process(IConventionComplexPropertyBuilder propertyBuilder)
     {
         if (propertyBuilder.Metadata.GetIdentifyingMemberInfo() is MemberInfo memberInfo
-            && IsNonNullableReferenceType(propertyBuilder.ModelBuilder, memberInfo))
+            && TryGetNullabilityInfo(propertyBuilder.ModelBuilder, memberInfo, out var nullabilityInfo)
+            && nullabilityInfo.ReadState == NullabilityState.NotNull)
         {
             propertyBuilder.IsRequired(true);
         }
@@ -64,13 +78,26 @@ public class NonNullableReferencePropertyConvention : NonNullableConventionBase,
     }
 
     /// <inheritdoc />
-    public void ProcessComplexPropertyAdded(
+    public virtual void ProcessPropertyElementTypeChanged(
+        IConventionPropertyBuilder propertyBuilder,
+        IElementType? newElementType,
+        IElementType? oldElementType,
+        IConventionContext<IElementType> context)
+    {
+        if (newElementType != null)
+        {
+            Process(propertyBuilder);
+        }
+    }
+
+    /// <inheritdoc />
+    public virtual void ProcessComplexPropertyAdded(
         IConventionComplexPropertyBuilder propertyBuilder,
         IConventionContext<IConventionComplexPropertyBuilder> context)
         => Process(propertyBuilder);
 
     /// <inheritdoc />
-    public void ProcessComplexPropertyFieldChanged(
+    public virtual void ProcessComplexPropertyFieldChanged(
         IConventionComplexPropertyBuilder propertyBuilder,
         FieldInfo? newFieldInfo,
         FieldInfo? oldFieldInfo,

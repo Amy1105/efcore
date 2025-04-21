@@ -25,9 +25,7 @@ public class StoreStoredProcedureResultColumn
         StoreStoredProcedure storedProcedure,
         RelationalTypeMapping? storeTypeMapping = null)
         : base(name, type, storedProcedure, storeTypeMapping)
-    {
-        Position = position;
-    }
+        => Position = position;
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -54,8 +52,8 @@ public class StoreStoredProcedureResultColumn
     /// </summary>
     protected override RelationalTypeMapping GetDefaultStoreTypeMapping()
         => PropertyMappings.Count != 0
-                ? PropertyMappings[0].TypeMapping
-                : (RelationalTypeMapping)Table.Model.Model.GetModelDependencies().TypeMappingSource.FindMapping(typeof(int))!;
+            ? PropertyMappings[0].TypeMapping
+            : (RelationalTypeMapping)Table.Model.Model.GetModelDependencies().TypeMappingSource.FindMapping(typeof(int))!;
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -72,7 +70,6 @@ public class StoreStoredProcedureResultColumn
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    [EntityFrameworkInternal]
     public virtual DebugView DebugView
         => new(
             () => ((IStoreStoredProcedureResultColumn)this).ToDebugString(),

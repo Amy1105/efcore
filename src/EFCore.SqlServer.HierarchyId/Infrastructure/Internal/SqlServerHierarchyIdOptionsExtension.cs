@@ -6,8 +6,6 @@ using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.SqlServer.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Query.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal;
-using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.SqlServer.Infrastructure.Internal;
 
@@ -37,9 +35,7 @@ public class SqlServerHierarchyIdOptionsExtension : IDbContextOptionsExtension
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public virtual void ApplyServices(IServiceCollection services)
-    {
-        services.AddEntityFrameworkSqlServerHierarchyId();
-    }
+        => services.AddEntityFrameworkSqlServerHierarchyId();
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -67,13 +63,8 @@ public class SqlServerHierarchyIdOptionsExtension : IDbContextOptionsExtension
         }
     }
 
-    private sealed class ExtensionInfo : DbContextOptionsExtensionInfo
+    private sealed class ExtensionInfo(IDbContextOptionsExtension extension) : DbContextOptionsExtensionInfo(extension)
     {
-        public ExtensionInfo(IDbContextOptionsExtension extension)
-            : base(extension)
-        {
-        }
-
         private new SqlServerHierarchyIdOptionsExtension Extension
             => (SqlServerHierarchyIdOptionsExtension)base.Extension;
 

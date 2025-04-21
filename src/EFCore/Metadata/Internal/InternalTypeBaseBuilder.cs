@@ -3,6 +3,7 @@
 
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using Microsoft.EntityFrameworkCore.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Metadata.Internal;
 
@@ -12,7 +13,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal;
 ///     any release. You should only use it directly in your code with extreme caution and knowing that
 ///     doing so can result in application failures when updating to a new Entity Framework Core release.
 /// </summary>
-public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, InternalModelBuilder>,
+public abstract class InternalTypeBaseBuilder :
+    AnnotatableBuilder<TypeBase, InternalModelBuilder>,
     IConventionTypeBaseBuilder
 {
     /// <summary>
@@ -88,8 +90,13 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
     public virtual InternalPropertyBuilder? Property(
         Type? propertyType,
         string propertyName,
-        ConfigurationSource? configurationSource)
-        => Property(propertyType, propertyName, typeConfigurationSource: configurationSource, configurationSource: configurationSource);
+        ConfigurationSource? configurationSource,
+        bool skipTypeCheck = false)
+        => Property(
+            propertyType, propertyName, memberInfo: null,
+            typeConfigurationSource: configurationSource,
+            configurationSource: configurationSource,
+            skipTypeCheck);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -101,11 +108,13 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type? propertyType,
         string propertyName,
         ConfigurationSource? typeConfigurationSource,
-        ConfigurationSource? configurationSource)
+        ConfigurationSource? configurationSource,
+        bool skipTypeCheck = false)
         => Property(
             propertyType, propertyName, memberInfo: null,
             typeConfigurationSource,
-            configurationSource);
+            configurationSource,
+            skipTypeCheck);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -134,7 +143,8 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
     public virtual InternalPropertyBuilder? IndexerProperty(
         [DynamicallyAccessedMembers(IProperty.DynamicallyAccessedMemberTypes)] Type? propertyType,
         string propertyName,
-        ConfigurationSource? configurationSource)
+        ConfigurationSource? configurationSource,
+        bool skipTypeCheck = false)
     {
         var indexerPropertyInfo = Metadata.FindIndexerPropertyInfo();
         if (indexerPropertyInfo == null)
@@ -143,7 +153,7 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
                 CoreStrings.NonIndexerEntityType(propertyName, Metadata.DisplayName(), typeof(string).ShortDisplayName()));
         }
 
-        return Property(propertyType, propertyName, indexerPropertyInfo, configurationSource, configurationSource);
+        return Property(propertyType, propertyName, indexerPropertyInfo, configurationSource, configurationSource, skipTypeCheck);
     }
 
     /// <summary>
@@ -157,11 +167,12 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
         string propertyName,
         MemberInfo? memberInfo,
         ConfigurationSource? typeConfigurationSource,
-        ConfigurationSource? configurationSource)
+        ConfigurationSource? configurationSource,
+        bool skipTypeCheck = false)
     {
-        var entityType = Metadata;
+        var structuralType = Metadata;
         List<Property>? propertiesToDetach = null;
-        var existingProperty = entityType.FindProperty(propertyName);
+        var existingProperty = structuralType.FindProperty(propertyName);
         if (existingProperty != null)
         {
             if (existingProperty.DeclaringType != Metadata)
@@ -171,7 +182,7 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
                     Metadata.RemoveIgnored(propertyName);
                 }
 
-                entityType = (EntityType)existingProperty.DeclaringType;
+                structuralType = existingProperty.DeclaringType;
             }
 
             if (IsCompatible(memberInfo, existingProperty)
@@ -195,6 +206,7 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
                 || (memberInfo is PropertyInfo propertyInfo && propertyInfo.IsIndexerProperty()))
             {
                 if (existingProperty.GetTypeConfigurationSource() is ConfigurationSource existingTypeConfigurationSource
+                    && typeConfigurationSource != null
                     && !typeConfigurationSource.Overrides(existingTypeConfigurationSource))
                 {
                     return null;
@@ -209,13 +221,15 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
 
             propertyType ??= existingProperty.ClrType;
 
-            propertiesToDetach = new List<Property> { existingProperty };
+            propertiesToDetach = [existingProperty];
         }
         else
         {
             if (configurationSource != ConfigurationSource.Explicit
                 && (!configurationSource.HasValue
-                    || !CanAddProperty(propertyType ?? memberInfo?.GetMemberType(), propertyName, configurationSource.Value)))
+                    || !CanAddProperty(
+                        propertyType ?? memberInfo?.GetMemberType(),
+                        propertyName, configurationSource.Value, skipTypeCheck: skipTypeCheck)))
             {
                 return null;
             }
@@ -240,7 +254,7 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
                 var derivedProperty = derivedType.FindDeclaredProperty(propertyName);
                 if (derivedProperty != null)
                 {
-                    propertiesToDetach ??= new List<Property>();
+                    propertiesToDetach ??= [];
 
                     propertiesToDetach.Add(derivedProperty);
                 }
@@ -261,7 +275,7 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
                 RemoveMembersInHierarchy(propertyName, configurationSource.Value);
             }
 
-            builder = entityType.AddProperty(
+            builder = structuralType.AddProperty(
                 propertyName, propertyType, memberInfo, typeConfigurationSource, configurationSource.Value)!.Builder;
 
             detachedProperties?.Attach(this);
@@ -278,14 +292,93 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    public virtual InternalPropertyBuilder? PrimitiveCollection(
+        Type? propertyType,
+        string propertyName,
+        ConfigurationSource? configurationSource)
+        => PrimitiveCollection(
+            propertyType, propertyName, typeConfigurationSource: configurationSource, configurationSource: configurationSource);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public virtual InternalPropertyBuilder? PrimitiveCollection(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type? propertyType,
+        string propertyName,
+        ConfigurationSource? typeConfigurationSource,
+        ConfigurationSource? configurationSource)
+        => PrimitiveCollection(
+            propertyType, propertyName, memberInfo: null,
+            typeConfigurationSource,
+            configurationSource);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public virtual InternalPropertyBuilder? PrimitiveCollection(string propertyName, ConfigurationSource? configurationSource)
+        => PrimitiveCollection(propertyType: null, propertyName, memberInfo: null, typeConfigurationSource: null, configurationSource);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public virtual InternalPropertyBuilder? PrimitiveCollection(MemberInfo memberInfo, ConfigurationSource? configurationSource)
+        => PrimitiveCollection(
+            memberInfo.GetMemberType(), memberInfo.GetSimpleMemberName(), memberInfo, configurationSource, configurationSource);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    protected virtual InternalPropertyBuilder? PrimitiveCollection(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type? propertyType,
+        string propertyName,
+        MemberInfo? memberInfo,
+        ConfigurationSource? typeConfigurationSource,
+        ConfigurationSource? configurationSource)
+    {
+        var builder = Property(propertyType, propertyName, memberInfo, typeConfigurationSource, configurationSource);
+
+        if (builder != null)
+        {
+            var elementClrType = builder.Metadata.ClrType.TryGetElementType(typeof(IEnumerable<>));
+            if (elementClrType == null)
+            {
+                throw new InvalidOperationException(CoreStrings.NotCollection(builder.Metadata.ClrType.ShortDisplayName(), propertyName));
+            }
+
+            builder.SetElementType(elementClrType, configurationSource!.Value);
+        }
+
+        return builder;
+    }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
     public virtual InternalPropertyBuilder? CreateUniqueProperty(
         Type propertyType,
         string propertyName,
-        bool required)
+        bool required,
+        bool checkType = false)
         => CreateUniqueProperties(
             new[] { propertyType },
             new[] { propertyName },
-            required)?.First().Builder;
+            required,
+            checkTypes: checkType)?.First().Builder;
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -296,14 +389,16 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
     public virtual IReadOnlyList<Property>? CreateUniqueProperties(
         IReadOnlyList<Type> propertyTypes,
         IReadOnlyList<string> propertyNames,
-        bool isRequired)
+        bool isRequired,
+        bool checkTypes = false)
         => TryCreateUniqueProperties(
             propertyNames.Count,
             null,
             propertyTypes,
             propertyNames,
             isRequired,
-            "").Item2;
+            "",
+            checkTypes: checkTypes).Item2;
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -314,14 +409,16 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
     public virtual IReadOnlyList<Property>? CreateUniqueProperties(
         IReadOnlyList<Property> principalProperties,
         bool isRequired,
-        string baseName)
+        string baseName,
+        bool checkTypes = false)
         => TryCreateUniqueProperties(
             principalProperties.Count,
             null,
             principalProperties.Select(p => p.ClrType),
             principalProperties.Select(p => p.Name),
             isRequired,
-            baseName).Item2;
+            baseName,
+            checkTypes: checkTypes).Item2;
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -335,7 +432,8 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
         IEnumerable<Type> principalPropertyTypes,
         IEnumerable<string> principalPropertyNames,
         bool isRequired,
-        string baseName)
+        string baseName,
+        bool checkTypes = false)
     {
         var newProperties = currentProperties == null ? new Property[propertyCount] : null;
         var clrProperties = Metadata.GetRuntimeProperties();
@@ -369,8 +467,11 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
                     if (currentProperties == null)
                     {
                         var propertyBuilder = Property(
-                            clrType, propertyName, typeConfigurationSource: null,
-                            configurationSource: ConfigurationSource.Convention);
+                            clrType,
+                            propertyName,
+                            typeConfigurationSource: null,
+                            configurationSource: ConfigurationSource.Convention,
+                            skipTypeCheck: !checkTypes);
 
                         if (propertyBuilder == null)
                         {
@@ -546,19 +647,40 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
             return null;
         }
 
+        if (properties.Count == 0)
+        {
+            return properties;
+        }
+
+        for (var i = 0;; i++)
+        {
+            var property = properties[i];
+            if (!property.IsInModel || !property.DeclaringType.IsAssignableFrom(Metadata))
+            {
+                break;
+            }
+
+            if (i == properties.Count - 1)
+            {
+                return properties;
+            }
+        }
+
         var actualProperties = new Property[properties.Count];
         for (var i = 0; i < actualProperties.Length; i++)
         {
             var property = properties[i];
             var typeConfigurationSource = property.GetTypeConfigurationSource();
-            var builder = property.IsInModel && property.DeclaringType.IsAssignableFrom(Metadata)
-                ? property.Builder
-                : Property(
-                    typeConfigurationSource.Overrides(ConfigurationSource.DataAnnotation) ? property.ClrType : null,
-                    property.Name,
-                    property.GetIdentifyingMemberInfo(),
-                    typeConfigurationSource.Overrides(ConfigurationSource.DataAnnotation) ? typeConfigurationSource : null,
-                    configurationSource);
+            var builder = Property(
+                typeConfigurationSource.Overrides(ConfigurationSource.DataAnnotation)
+                || (property.IsInModel && Metadata.IsAssignableFrom(property.DeclaringType))
+                    ? property.ClrType
+                    : null,
+                property.Name,
+                property.GetIdentifyingMemberInfo(),
+                typeConfigurationSource.Overrides(ConfigurationSource.DataAnnotation) ? typeConfigurationSource : null,
+                configurationSource);
+
             if (builder == null)
             {
                 return null;
@@ -588,20 +710,21 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
         {
             foreach (var relationship in propertyToDetach.GetContainingForeignKeys().ToList())
             {
-                detachedRelationships ??= new List<RelationshipSnapshot>();
+                detachedRelationships ??= [];
 
                 detachedRelationships.Add(InternalEntityTypeBuilder.DetachRelationship(relationship));
             }
         }
 
-        var detachedIndexes = InternalEntityTypeBuilder.DetachIndexes(propertiesToDetach.SelectMany(p => p.GetContainingIndexes()).Distinct());
+        var detachedIndexes =
+            InternalEntityTypeBuilder.DetachIndexes(propertiesToDetach.SelectMany(p => p.GetContainingIndexes()).Distinct());
 
         var keysToDetach = propertiesToDetach.SelectMany(p => p.GetContainingKeys()).Distinct().ToList();
         foreach (var key in keysToDetach)
         {
             foreach (var referencingForeignKey in key.GetReferencingForeignKeys().ToList())
             {
-                detachedRelationships ??= new List<RelationshipSnapshot>();
+                detachedRelationships ??= [];
 
                 detachedRelationships.Add(InternalEntityTypeBuilder.DetachRelationship(referencingForeignKey));
             }
@@ -652,7 +775,7 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
         {
             if (conflictingProperty.GetConfigurationSource() != ConfigurationSource.Explicit)
             {
-                conflictingProperty.DeclaringType.RemoveProperty(conflictingProperty);
+                conflictingProperty.DeclaringType.Builder.RemoveProperty(conflictingProperty, configurationSource);
             }
         }
 
@@ -689,7 +812,9 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
                     || typeConfigurationSource.Overrides(existingTypeConfigurationSource)))
             || configurationSource.Overrides(existingProperty.GetConfigurationSource())
             : configurationSource.HasValue
-            && CanAddProperty(propertyType ?? memberInfo?.GetMemberType(), propertyName, configurationSource.Value, checkClrProperty);
+            && CanAddProperty(
+                propertyType ?? memberInfo?.GetMemberType(),
+                propertyName, configurationSource.Value, checkClrProperty: checkClrProperty);
     }
 
     /// <summary>
@@ -702,7 +827,8 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type? propertyType,
         string propertyName,
         ConfigurationSource configurationSource,
-        bool checkClrProperty = false);
+        bool checkClrProperty = false,
+        bool skipTypeCheck = false);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -836,7 +962,8 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
                 CoreStrings.NonIndexerEntityType(propertyName, Metadata.DisplayName(), typeof(string).ShortDisplayName()));
         }
 
-        return ComplexProperty(propertyType, propertyName, indexerPropertyInfo, complexType, collection, configurationSource);
+        return ComplexProperty(
+            propertyType, propertyName, indexerPropertyInfo, complexTypeName: null, complexType, collection, configurationSource);
     }
 
     /// <summary>
@@ -847,10 +974,12 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
     /// </summary>
     public virtual InternalComplexPropertyBuilder? ComplexProperty(
         MemberInfo memberInfo,
+        string? complexTypeName,
         bool? collection,
         ConfigurationSource? configurationSource)
         => ComplexProperty(
-            memberInfo.GetMemberType(), memberInfo.Name, memberInfo, complexType: null, collection, configurationSource);
+            memberInfo.GetMemberType(), memberInfo.Name, memberInfo, complexTypeName,
+            complexType: null, collection, configurationSource);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -861,10 +990,11 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
     public virtual InternalComplexPropertyBuilder? ComplexProperty(
         [DynamicallyAccessedMembers(IProperty.DynamicallyAccessedMemberTypes)] Type? propertyType,
         string propertyName,
+        string? complexTypeName,
         bool? collection,
         ConfigurationSource? configurationSource)
         => ComplexProperty(
-            propertyType, propertyName, memberInfo: null, complexType: null, collection, configurationSource);
+            propertyType, propertyName, memberInfo: null, complexTypeName, complexType: null, collection, configurationSource);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -876,11 +1006,12 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
         [DynamicallyAccessedMembers(IProperty.DynamicallyAccessedMemberTypes)] Type? propertyType,
         string propertyName,
         MemberInfo? memberInfo,
+        string? complexTypeName,
         [DynamicallyAccessedMembers(IProperty.DynamicallyAccessedMemberTypes)] Type? complexType,
         bool? collection,
         ConfigurationSource? configurationSource)
     {
-        var entityType = Metadata;
+        var typeBase = Metadata;
         List<ComplexProperty>? propertiesToDetach = null;
         var existingComplexProperty = Metadata.FindComplexProperty(propertyName);
         if (existingComplexProperty != null)
@@ -892,7 +1023,7 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
                     Metadata.RemoveIgnored(propertyName);
                 }
 
-                entityType = (EntityType)existingComplexProperty.DeclaringType;
+                typeBase = existingComplexProperty.DeclaringType;
             }
 
             var existingComplexType = existingComplexProperty.ComplexType;
@@ -924,7 +1055,7 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
             collection ??= existingComplexProperty.IsCollection;
             complexType ??= existingComplexType.ClrType;
 
-            propertiesToDetach = new List<ComplexProperty> { existingComplexProperty };
+            propertiesToDetach = [existingComplexProperty];
         }
         else
         {
@@ -968,23 +1099,17 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
                 var derivedProperty = derivedType.FindDeclaredComplexProperty(propertyName);
                 if (derivedProperty != null)
                 {
-                    propertiesToDetach ??= new List<ComplexProperty>();
+                    propertiesToDetach ??= [];
 
                     propertiesToDetach.Add(derivedProperty);
                 }
             }
         }
 
-        InternalComplexPropertyBuilder builder;
-        using (Metadata.Model.DelayConventions())
+        var model = Metadata.Model;
+        ComplexProperty complexProperty;
+        using (model.DelayConventions())
         {
-            Metadata.Model.AddComplex(complexType!, configurationSource.Value);
-
-            foreach (var existingEntityType in Metadata.Model.FindEntityTypes(complexType!).ToList())
-            {
-                Metadata.Model.Builder.HasNoEntityType(existingEntityType, ConfigurationSource.Convention);
-            }
-
             var detachedProperties = propertiesToDetach == null ? null : DetachProperties(propertiesToDetach);
             if (existingComplexProperty == null)
             {
@@ -993,8 +1118,8 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
                 RemoveMembersInHierarchy(propertyName, configurationSource.Value);
             }
 
-            builder = entityType.AddComplexProperty(
-                propertyName, propertyType, memberInfo, complexType!, collection.Value, configurationSource.Value)!.Builder;
+            complexProperty = typeBase.AddComplexProperty(
+                propertyName, propertyType, memberInfo, complexTypeName, complexType!, collection.Value, configurationSource.Value)!;
 
             if (detachedProperties != null)
             {
@@ -1005,8 +1130,8 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
             }
         }
 
-        return builder.Metadata.IsInModel
-            ? builder
+        return complexProperty.IsInModel
+            ? complexProperty.Builder
             : Metadata.FindComplexProperty(propertyName)?.Builder;
     }
 
@@ -1212,6 +1337,224 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
         => configurationSource.Overrides(((IConventionTypeBase)Metadata).GetPropertyAccessModeConfigurationSource())
             || ((IConventionTypeBase)Metadata).GetPropertyAccessMode() == propertyAccessMode;
 
+    private const string DefaultDiscriminatorName = "Discriminator";
+
+    private static readonly Type DefaultDiscriminatorType = typeof(string);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public virtual InternalTypeBaseBuilder? HasNoDiscriminator(ConfigurationSource configurationSource)
+    {
+        if (Metadata[CoreAnnotationNames.DiscriminatorProperty] == null)
+        {
+            return this;
+        }
+
+        if (!configurationSource.Overrides(Metadata.GetDiscriminatorPropertyConfigurationSource()))
+        {
+            return null;
+        }
+
+        if (((IReadOnlyTypeBase)Metadata).FindDiscriminatorProperty()?.DeclaringType == Metadata)
+        {
+            RemoveUnusedDiscriminatorProperty(null, configurationSource);
+        }
+
+        Metadata.SetDiscriminatorProperty(null, configurationSource);
+
+        RemoveIncompatibleDiscriminatorValues(Metadata, null, configurationSource);
+
+        return this;
+    }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    protected virtual InternalPropertyBuilder? GetOrCreateDiscriminatorProperty(
+        Type? type, string? name, MemberInfo? memberInfo, ConfigurationSource configurationSource)
+    {
+        if (memberInfo != null)
+        {
+            type ??= memberInfo.GetMemberType();
+            name ??= memberInfo.Name;
+        }
+        else
+        {
+            var existingDiscriminatorProperty = ((IReadOnlyTypeBase)Metadata).FindDiscriminatorProperty();
+            if ((name == null || (existingDiscriminatorProperty?.Name) == name)
+                && (type == null || (existingDiscriminatorProperty?.ClrType) == type))
+            {
+                type ??= existingDiscriminatorProperty?.ClrType;
+                name ??= existingDiscriminatorProperty?.Name;
+            }
+
+            type ??= DefaultDiscriminatorType;
+            name ??= DefaultDiscriminatorName;
+        }
+
+        var rootType = Metadata.GetRootType();
+        var discriminatorPropertyBuilder = rootType.Builder.Property(
+            type,
+            name,
+            memberInfo,
+            typeConfigurationSource: type != null ? ConfigurationSource.Convention : null,
+            ConfigurationSource.Convention);
+
+        if (discriminatorPropertyBuilder == null)
+        {
+            if (configurationSource != ConfigurationSource.Convention)
+            {
+                rootType.Builder.RemoveProperty(rootType.FindProperty(name)!, configurationSource);
+                discriminatorPropertyBuilder = rootType.Builder.Property(
+                    type,
+                    name,
+                    memberInfo,
+                    typeConfigurationSource: type != null ? ConfigurationSource.Convention : null,
+                    ConfigurationSource.Convention);
+            }
+
+            if (discriminatorPropertyBuilder == null)
+            {
+                return null;
+            }
+        }
+
+        var discriminatorProperty = discriminatorPropertyBuilder.Metadata;
+        RemoveUnusedDiscriminatorProperty(discriminatorProperty, configurationSource);
+
+        rootType.SetDiscriminatorProperty(discriminatorProperty, configurationSource);
+
+        RemoveIncompatibleDiscriminatorValues(Metadata, discriminatorProperty, configurationSource);
+
+        discriminatorPropertyBuilder.AfterSave(PropertySaveBehavior.Throw, ConfigurationSource.Convention);
+        discriminatorPropertyBuilder.IsRequired(true, ConfigurationSource.Convention);
+        discriminatorPropertyBuilder.HasValueGeneratorFactory(
+            typeof(DiscriminatorValueGeneratorFactory), ConfigurationSource.Convention);
+
+        return discriminatorPropertyBuilder;
+    }
+
+    private void RemoveUnusedDiscriminatorProperty(Property? newDiscriminatorProperty, ConfigurationSource configurationSource)
+    {
+        var oldDiscriminatorProperty = ((IReadOnlyTypeBase)Metadata).FindDiscriminatorProperty() as Property;
+        if (oldDiscriminatorProperty?.IsInModel == true
+            && oldDiscriminatorProperty != newDiscriminatorProperty)
+        {
+            oldDiscriminatorProperty.DeclaringType.Builder.RemoveUnusedImplicitProperties([oldDiscriminatorProperty]);
+
+            if (oldDiscriminatorProperty.IsInModel)
+            {
+                // TODO: Remove this once layering is implemented, #15898
+                oldDiscriminatorProperty.Builder.AfterSave(null, ConfigurationSource.Convention);
+                oldDiscriminatorProperty.Builder.IsRequired(null, ConfigurationSource.Convention);
+                oldDiscriminatorProperty.Builder.HasValueGenerator((Type?)null, ConfigurationSource.Convention);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public virtual bool CanSetDiscriminator(string? name, Type? type, ConfigurationSource configurationSource)
+        => name == null && type == null
+            ? CanRemoveDiscriminator(configurationSource)
+            : CanSetDiscriminator(((IReadOnlyTypeBase)Metadata).FindDiscriminatorProperty(), name, type, configurationSource);
+
+    private bool CanSetDiscriminator(
+        IReadOnlyProperty? discriminatorProperty,
+        string? name,
+        Type? discriminatorType,
+        ConfigurationSource configurationSource)
+        => ((name == null && discriminatorType == null)
+                || ((name == null || discriminatorProperty?.Name == name)
+                    && (discriminatorType == null || discriminatorProperty?.ClrType == discriminatorType))
+                || configurationSource.Overrides(Metadata.GetRootType().GetDiscriminatorPropertyConfigurationSource()))
+            && (discriminatorProperty != null
+                || Metadata.GetRootType().Builder.CanAddDiscriminatorProperty(
+                    discriminatorType ?? DefaultDiscriminatorType,
+                    name ?? DefaultDiscriminatorName,
+                    typeConfigurationSource: discriminatorType != null
+                        ? configurationSource
+                        : null));
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public virtual bool CanRemoveDiscriminator(ConfigurationSource configurationSource)
+        => CanSetAnnotation(CoreAnnotationNames.DiscriminatorProperty, null, configurationSource);
+
+    private bool CanAddDiscriminatorProperty(
+        Type propertyType,
+        string name,
+        ConfigurationSource? typeConfigurationSource)
+    {
+        var conflictingProperty = Metadata.FindPropertiesInHierarchy(name).FirstOrDefault();
+        if (conflictingProperty != null
+            && (conflictingProperty.IsShadowProperty() || conflictingProperty.IsIndexerProperty())
+            && conflictingProperty.ClrType != propertyType
+            && typeConfigurationSource != null
+            && !typeConfigurationSource.Overrides(conflictingProperty.GetTypeConfigurationSource()))
+        {
+            return false;
+        }
+
+        var memberInfo = Metadata.IsPropertyBag
+            ? null
+            : Metadata.ClrType.GetMembersInHierarchy(name).FirstOrDefault();
+
+        return memberInfo == null
+            || propertyType == memberInfo.GetMemberType()
+            || typeConfigurationSource == null;
+    }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    protected virtual void RemoveIncompatibleDiscriminatorValues(
+        TypeBase structuralType,
+        Property? newDiscriminatorProperty,
+        ConfigurationSource configurationSource)
+    {
+        if ((newDiscriminatorProperty != null || structuralType.BaseType != null)
+            && (newDiscriminatorProperty == null
+                || newDiscriminatorProperty.ClrType.IsInstanceOfType(((IReadOnlyTypeBase)structuralType).GetDiscriminatorValue())))
+        {
+            return;
+        }
+
+        if (configurationSource.Overrides(((IConventionTypeBase)structuralType).GetDiscriminatorValueConfigurationSource()))
+        {
+            ((IMutableTypeBase)structuralType).RemoveDiscriminatorValue();
+        }
+
+        if (structuralType.BaseType == null)
+        {
+            foreach (var derivedType in structuralType.GetDerivedTypes())
+            {
+                if (configurationSource.Overrides(((IConventionTypeBase)derivedType).GetDiscriminatorValueConfigurationSource()))
+                {
+                    ((IMutableTypeBase)derivedType).RemoveDiscriminatorValue();
+                }
+            }
+        }
+    }
+
     IConventionTypeBase IConventionTypeBaseBuilder.Metadata
     {
         [DebuggerStepThrough]
@@ -1250,6 +1593,16 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
     IConventionTypeBaseBuilder? IConventionTypeBaseBuilder.HasNoAnnotation(string name, bool fromDataAnnotation)
         => (IConventionTypeBaseBuilder?)base.HasNoAnnotation(
             name, fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    [DebuggerStepThrough]
+    bool IConventionTypeBaseBuilder.CanRemoveDiscriminator(bool fromDataAnnotation)
+        => CanRemoveDiscriminator(fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -1408,10 +1761,11 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
     [DebuggerStepThrough]
     IConventionTypeBaseBuilder? IConventionTypeBaseBuilder.HasNoProperty(IConventionProperty property, bool fromDataAnnotation)
         => RemoveProperty(
-            (Property)property,
-            fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention) == null
-            ? null
-            : this;
+                (Property)property,
+                fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention)
+            == null
+                ? null
+                : this;
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -1433,13 +1787,17 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
     /// </summary>
     [DebuggerStepThrough]
     IConventionComplexPropertyBuilder? IConventionTypeBaseBuilder.ComplexProperty(
-        Type propertyType, string propertyName, Type? complexType, bool fromDataAnnotation)
+        Type propertyType,
+        string propertyName,
+        Type? complexType,
+        bool fromDataAnnotation)
         => ComplexProperty(
             propertyType,
             propertyName,
             memberInfo: null,
+            complexTypeName: null,
             complexType: complexType,
-            collection: null,
+            collection: false,
             configurationSource: fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
 
     /// <summary>
@@ -1450,13 +1808,16 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
     /// </summary>
     [DebuggerStepThrough]
     IConventionComplexPropertyBuilder? IConventionTypeBaseBuilder.ComplexProperty(
-        MemberInfo memberInfo, Type? complexType, bool fromDataAnnotation)
+        MemberInfo memberInfo,
+        Type? complexType,
+        bool fromDataAnnotation)
         => ComplexProperty(
             propertyType: memberInfo.GetMemberType(),
             propertyName: memberInfo.Name,
             memberInfo: memberInfo,
+            complexTypeName: null,
             complexType: complexType,
-            collection: null,
+            collection: false,
             configurationSource: fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
 
     /// <summary>
@@ -1467,13 +1828,16 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
     /// </summary>
     [DebuggerStepThrough]
     bool IConventionTypeBaseBuilder.CanHaveComplexProperty(
-        Type? propertyType, string propertyName, Type? complexType, bool fromDataAnnotation)
+        Type? propertyType,
+        string propertyName,
+        Type? complexType,
+        bool fromDataAnnotation)
         => CanHaveComplexProperty(
             propertyType,
             propertyName,
             memberInfo: null,
             complexType,
-            collection: null,
+            collection: false,
             configurationSource: fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
 
     /// <summary>
@@ -1489,7 +1853,59 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
             memberInfo.Name,
             memberInfo,
             complexType,
-            collection: null,
+            collection: false,
+            configurationSource: fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    [DebuggerStepThrough]
+    public IConventionComplexPropertyBuilder? ComplexCollection(Type propertyType, string propertyName, Type? complexType = null, bool fromDataAnnotation = false)
+        => ComplexProperty(
+            propertyType,
+            propertyName,
+            memberInfo: null,
+            complexTypeName: null,
+            complexType: complexType,
+            collection: true,
+            configurationSource: fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    [DebuggerStepThrough]
+    public IConventionComplexPropertyBuilder? ComplexCollection(MemberInfo memberInfo, Type? complexType = null, bool fromDataAnnotation = false)
+        => ComplexProperty(
+            propertyType: memberInfo.GetMemberType(),
+            propertyName: memberInfo.Name,
+            memberInfo: memberInfo,
+            complexTypeName: null,
+            complexType: complexType,
+            collection: true,
+            configurationSource: fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
+
+    bool IConventionTypeBaseBuilder.CanHaveComplexCollection(Type? propertyType, string propertyName, Type? complexType, bool fromDataAnnotation)
+        => CanHaveComplexProperty(
+            propertyType,
+            propertyName,
+            memberInfo: null,
+            complexType,
+            collection: true,
+            configurationSource: fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
+
+    bool IConventionTypeBaseBuilder.CanHaveComplexCollection(MemberInfo memberInfo, Type? complexType, bool fromDataAnnotation)
+        => CanHaveComplexProperty(
+            memberInfo.GetMemberType(),
+            memberInfo.Name,
+            memberInfo,
+            complexType,
+            collection: true,
             configurationSource: fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
 
     /// <summary>
@@ -1500,12 +1916,15 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
     /// </summary>
     [DebuggerStepThrough]
     IConventionComplexPropertyBuilder? IConventionTypeBaseBuilder.ComplexIndexerProperty(
-        Type propertyType, string propertyName, Type? complexType, bool fromDataAnnotation)
+        Type propertyType,
+        string propertyName,
+        Type? complexType,
+        bool fromDataAnnotation)
         => ComplexIndexerProperty(
             propertyType,
             propertyName,
             complexType,
-            collection: null,
+            collection: false,
             fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
 
     /// <summary>
@@ -1516,13 +1935,16 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
     /// </summary>
     [DebuggerStepThrough]
     bool IConventionTypeBaseBuilder.CanHaveComplexIndexerProperty(
-        Type propertyType, string propertyName, Type? complexType, bool fromDataAnnotation)
+        Type propertyType,
+        string propertyName,
+        Type? complexType,
+        bool fromDataAnnotation)
         => CanHaveComplexProperty(
             propertyType,
             propertyName,
             Metadata.FindIndexerPropertyInfo(),
             complexType,
-            collection: null,
+            collection: false,
             configurationSource: fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
 
     /// <summary>
@@ -1533,7 +1955,8 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
     /// </summary>
     [DebuggerStepThrough]
     IConventionTypeBaseBuilder? IConventionTypeBaseBuilder.HasNoComplexProperty(
-        IConventionComplexProperty complexProperty, bool fromDataAnnotation)
+        IConventionComplexProperty complexProperty,
+        bool fromDataAnnotation)
         => HasNoComplexProperty(
             (ComplexProperty)complexProperty,
             fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
@@ -1626,4 +2049,52 @@ public abstract class InternalTypeBaseBuilder : AnnotatableBuilder<TypeBase, Int
     bool IConventionTypeBaseBuilder.CanSetPropertyAccessMode(PropertyAccessMode? propertyAccessMode, bool fromDataAnnotation)
         => CanSetPropertyAccessMode(
             propertyAccessMode, fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    [DebuggerStepThrough]
+    bool IConventionTypeBaseBuilder.CanSetDiscriminator(string name, bool fromDataAnnotation)
+        => CanSetDiscriminator(
+            name, type: null,
+            fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    [DebuggerStepThrough]
+    bool IConventionTypeBaseBuilder.CanSetDiscriminator(Type type, bool fromDataAnnotation)
+        => CanSetDiscriminator(
+            name: null, type,
+            fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    [DebuggerStepThrough]
+    bool IConventionTypeBaseBuilder.CanSetDiscriminator(string name, Type type, bool fromDataAnnotation)
+        => CanSetDiscriminator(
+            name, type,
+            fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    [DebuggerStepThrough]
+    bool IConventionTypeBaseBuilder.CanSetDiscriminator(MemberInfo memberInfo, bool fromDataAnnotation)
+        => CanSetDiscriminator(
+            Check.NotNull(memberInfo, nameof(memberInfo)).GetSimpleMemberName(), memberInfo.GetMemberType(),
+            fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
 }

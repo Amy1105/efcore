@@ -21,9 +21,7 @@ public class RelationalEvaluatableExpressionFilter : EvaluatableExpressionFilter
         EvaluatableExpressionFilterDependencies dependencies,
         RelationalEvaluatableExpressionFilterDependencies relationalDependencies)
         : base(dependencies)
-    {
-        RelationalDependencies = relationalDependencies;
-    }
+        => RelationalDependencies = relationalDependencies;
 
     /// <summary>
     ///     Relational provider-specific dependencies for this service.
@@ -45,7 +43,7 @@ public class RelationalEvaluatableExpressionFilter : EvaluatableExpressionFilter
                 return false;
             }
 
-            if (method.DeclaringType == typeof(RelationalDbFunctionExtensions))
+            if (method.DeclaringType == typeof(RelationalDbFunctionsExtensions))
             {
                 return false;
             }

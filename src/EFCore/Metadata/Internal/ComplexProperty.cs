@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.EntityFrameworkCore.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Metadata.Internal;
 
@@ -11,7 +12,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal;
 ///     any release. You should only use it directly in your code with extreme caution and knowing that
 ///     doing so can result in application failures when updating to a new Entity Framework Core release.
 /// </summary>
-public class ComplexProperty : PropertyBase, IMutableComplexProperty, IConventionComplexProperty, IComplexProperty
+public class ComplexProperty : PropertyBase, IMutableComplexProperty, IConventionComplexProperty, IRuntimeComplexProperty
 {
     private InternalComplexPropertyBuilder? _builder;
     private bool? _isNullable;
@@ -30,6 +31,7 @@ public class ComplexProperty : PropertyBase, IMutableComplexProperty, IConventio
         PropertyInfo? propertyInfo,
         FieldInfo? fieldInfo,
         TypeBase declaringType,
+        string? targetTypeName,
         [DynamicallyAccessedMembers(IEntityType.DynamicallyAccessedMemberTypes)] Type targetType,
         bool collection,
         ConfigurationSource configurationSource)
@@ -39,9 +41,15 @@ public class ComplexProperty : PropertyBase, IMutableComplexProperty, IConventio
         DeclaringType = declaringType;
         IsCollection = collection;
         ComplexType = new ComplexType(
-            declaringType.GetOwnedName(targetType.ShortDisplayName(), name),
+            targetTypeName ?? declaringType.GetOwnedName(targetType.ShortDisplayName(), name),
             targetType, this, configurationSource);
         _builder = new InternalComplexPropertyBuilder(this, declaringType.Model.Builder);
+
+        if (collection)
+        {
+            _isNullable = false;
+            _isNullableConfigurationSource = configurationSource;
+        }
     }
 
     /// <summary>
@@ -53,7 +61,7 @@ public class ComplexProperty : PropertyBase, IMutableComplexProperty, IConventio
     public virtual InternalComplexPropertyBuilder Builder
     {
         [DebuggerStepThrough]
-        get => _builder ?? throw new InvalidOperationException(CoreStrings.ObjectRemovedFromModel);
+        get => _builder ?? throw new InvalidOperationException(CoreStrings.ObjectRemovedFromModel(Name));
     }
 
     /// <summary>
@@ -136,6 +144,12 @@ public class ComplexProperty : PropertyBase, IMutableComplexProperty, IConventio
                 throw new InvalidOperationException(
                     CoreStrings.CannotBeNullable(Name, DeclaringType.DisplayName(), ClrType.ShortDisplayName()));
             }
+
+            if (IsCollection)
+            {
+                throw new InvalidOperationException(
+                    CoreStrings.ComplexPropertyOptional(DeclaringType.DisplayName(), Name));
+            }
         }
 
         _isNullableConfigurationSource = configurationSource.Max(_isNullableConfigurationSource);
@@ -212,33 +226,27 @@ public class ComplexProperty : PropertyBase, IMutableComplexProperty, IConventio
         if (shouldBeCollection
             && memberClrType?.IsAssignableFrom(targetType) != true)
         {
-            if (shouldThrow)
-            {
-                throw new InvalidOperationException(
-                    CoreStrings.NavigationCollectionWrongClrType(
+            return shouldThrow
+                ? throw new InvalidOperationException(
+                    CoreStrings.ComplexCollectionWrongClrType(
                         propertyName,
                         sourceType.DisplayName(),
                         memberInfo.GetMemberType().ShortDisplayName(),
-                        targetType.ShortDisplayName()));
-            }
-
-            return false;
+                        targetType.ShortDisplayName()))
+                : false;
         }
 
         if (!shouldBeCollection
             && !memberInfo.GetMemberType().IsAssignableFrom(targetType))
         {
-            if (shouldThrow)
-            {
-                throw new InvalidOperationException(
-                    CoreStrings.NavigationSingleWrongClrType(
+            return shouldThrow
+                ? throw new InvalidOperationException(
+                    CoreStrings.ComplexPropertyWrongClrType(
                         propertyName,
                         sourceType.DisplayName(),
                         memberInfo.GetMemberType().ShortDisplayName(),
-                        targetType.ShortDisplayName()));
-            }
-
-            return false;
+                        targetType.ShortDisplayName()))
+                : false;
         }
 
         return true;
@@ -265,8 +273,8 @@ public class ComplexProperty : PropertyBase, IMutableComplexProperty, IConventio
     /// </summary>
     public virtual DebugView DebugView
         => new(
-            () => ((IReadOnlyEntityType)this).ToDebugString(),
-            () => ((IReadOnlyEntityType)this).ToDebugString(MetadataDebugStringOptions.LongDefault));
+            () => ((IReadOnlyComplexProperty)this).ToDebugString(),
+            () => ((IReadOnlyComplexProperty)this).ToDebugString(MetadataDebugStringOptions.LongDefault));
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to

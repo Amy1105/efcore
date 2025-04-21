@@ -12,7 +12,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal;
 ///     any release. You should only use it directly in your code with extreme caution and knowing that
 ///     doing so can result in application failures when updating to a new Entity Framework Core release.
 /// </summary>
-public class Navigation : PropertyBase, IMutableNavigation, IConventionNavigation, INavigation
+public class Navigation : PropertyBase, IMutableNavigation, IConventionNavigation, IRuntimeNavigation
 {
     private InternalNavigationBuilder? _builder;
 
@@ -51,7 +51,6 @@ public class Navigation : PropertyBase, IMutableNavigation, IConventionNavigatio
                 ? typeof(IEnumerable<>).MakeGenericType(TargetEntityType.ClrType)
                 : TargetEntityType.ClrType);
 
-
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
     ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
@@ -78,7 +77,7 @@ public class Navigation : PropertyBase, IMutableNavigation, IConventionNavigatio
     public virtual InternalNavigationBuilder Builder
     {
         [DebuggerStepThrough]
-        get => _builder ?? throw new InvalidOperationException(CoreStrings.ObjectRemovedFromModel);
+        get => _builder ?? throw new InvalidOperationException(CoreStrings.ObjectRemovedFromModel(Name));
     }
 
     /// <summary>
@@ -306,11 +305,7 @@ public class Navigation : PropertyBase, IMutableNavigation, IConventionNavigatio
             ref _collectionAccessor,
             ref _collectionAccessorInitialized,
             this,
-            static navigation =>
-            {
-                navigation.EnsureReadOnly();
-                return new ClrCollectionAccessorFactory().Create(navigation);
-            });
+            static navigation => ClrCollectionAccessorFactory.Instance.Create(navigation));
 
     /// <summary>
     ///     Runs the conventions when an annotation was set or removed.

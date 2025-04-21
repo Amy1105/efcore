@@ -10,6 +10,8 @@ namespace Microsoft.EntityFrameworkCore.Storage.Json;
 /// </summary>
 public sealed class JsonDecimalReaderWriter : JsonValueReaderWriter<decimal>
 {
+    private static readonly PropertyInfo InstanceProperty = typeof(JsonDecimalReaderWriter).GetProperty(nameof(Instance))!;
+
     /// <summary>
     ///     The singleton instance of this stateless reader/writer.
     /// </summary>
@@ -20,10 +22,14 @@ public sealed class JsonDecimalReaderWriter : JsonValueReaderWriter<decimal>
     }
 
     /// <inheritdoc />
-    public override decimal FromJsonTyped(ref Utf8JsonReaderManager manager)
+    public override decimal FromJsonTyped(ref Utf8JsonReaderManager manager, object? existingObject = null)
         => manager.CurrentReader.GetDecimal();
 
     /// <inheritdoc />
     public override void ToJsonTyped(Utf8JsonWriter writer, decimal value)
         => writer.WriteNumberValue(value);
+
+    /// <inheritdoc />
+    public override Expression ConstructorExpression
+        => Expression.Property(null, InstanceProperty);
 }

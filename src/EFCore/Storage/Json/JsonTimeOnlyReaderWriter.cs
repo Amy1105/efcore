@@ -11,6 +11,8 @@ namespace Microsoft.EntityFrameworkCore.Storage.Json;
 /// </summary>
 public sealed class JsonTimeOnlyReaderWriter : JsonValueReaderWriter<TimeOnly>
 {
+    private static readonly PropertyInfo InstanceProperty = typeof(JsonTimeOnlyReaderWriter).GetProperty(nameof(Instance))!;
+
     /// <summary>
     ///     The singleton instance of this stateless reader/writer.
     /// </summary>
@@ -21,10 +23,14 @@ public sealed class JsonTimeOnlyReaderWriter : JsonValueReaderWriter<TimeOnly>
     }
 
     /// <inheritdoc />
-    public override TimeOnly FromJsonTyped(ref Utf8JsonReaderManager manager)
+    public override TimeOnly FromJsonTyped(ref Utf8JsonReaderManager manager, object? existingObject = null)
         => TimeOnly.Parse(manager.CurrentReader.GetString()!, CultureInfo.InvariantCulture);
 
     /// <inheritdoc />
     public override void ToJsonTyped(Utf8JsonWriter writer, TimeOnly value)
         => writer.WriteStringValue(value.ToString("o", CultureInfo.InvariantCulture));
+
+    /// <inheritdoc />
+    public override Expression ConstructorExpression
+        => Expression.Property(null, InstanceProperty);
 }

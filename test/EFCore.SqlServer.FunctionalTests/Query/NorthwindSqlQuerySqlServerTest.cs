@@ -5,13 +5,13 @@ using Microsoft.Data.SqlClient;
 
 namespace Microsoft.EntityFrameworkCore.Query;
 
+#nullable disable
+
 public class NorthwindSqlQuerySqlServerTest : NorthwindSqlQueryTestBase<NorthwindQuerySqlServerFixture<NoopModelCustomizer>>
 {
     public NorthwindSqlQuerySqlServerTest(NorthwindQuerySqlServerFixture<NoopModelCustomizer> fixture, ITestOutputHelper testOutputHelper)
         : base(fixture)
-    {
-        Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
-    }
+        => Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
 
     [ConditionalFact]
     public virtual void Check_all_tests_overridden()
@@ -22,7 +22,7 @@ public class NorthwindSqlQuerySqlServerTest : NorthwindSqlQueryTestBase<Northwin
         await base.SqlQueryRaw_over_int(async);
 
         AssertSql(
-"""
+            """
 SELECT "ProductID" FROM "Products"
 """);
     }
@@ -32,14 +32,14 @@ SELECT "ProductID" FROM "Products"
         await base.SqlQuery_composed_Contains(async);
 
         AssertSql(
-"""
+            """
 SELECT [o].[OrderID], [o].[CustomerID], [o].[EmployeeID], [o].[OrderDate]
 FROM [Orders] AS [o]
 WHERE [o].[OrderID] IN (
-    SELECT [t].[Value]
+    SELECT [s].[Value]
     FROM (
         SELECT "ProductID" AS "Value" FROM "Products"
-    ) AS [t]
+    ) AS [s]
 )
 """);
     }
@@ -49,12 +49,12 @@ WHERE [o].[OrderID] IN (
         await base.SqlQuery_composed_Join(async);
 
         AssertSql(
-"""
-SELECT [o].[OrderID], [o].[CustomerID], [o].[EmployeeID], [o].[OrderDate], CAST([t].[Value] AS int) AS [p]
+            """
+SELECT [o].[OrderID], [o].[CustomerID], [o].[EmployeeID], [o].[OrderDate], CAST([s].[Value] AS int) AS [p]
 FROM [Orders] AS [o]
 INNER JOIN (
     SELECT "ProductID" AS "Value" FROM "Products"
-) AS [t] ON [o].[OrderID] = CAST([t].[Value] AS int)
+) AS [s] ON [o].[OrderID] = CAST([s].[Value] AS int)
 """);
     }
 
@@ -63,7 +63,7 @@ INNER JOIN (
         await base.SqlQuery_over_int_with_parameter(async);
 
         AssertSql(
-"""
+            """
 p0='10'
 
 SELECT "ProductID" FROM "Products" WHERE "ProductID" = @p0

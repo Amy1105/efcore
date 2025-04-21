@@ -15,11 +15,10 @@ namespace Microsoft.EntityFrameworkCore.Metadata;
 /// </remarks>
 public class RuntimeComplexType : RuntimeTypeBase, IRuntimeComplexType
 {
+    // Warning: Never access these fields directly as access needs to be thread-safe
     private InstantiationBinding? _constructorBinding;
     private InstantiationBinding? _serviceOnlyConstructorBinding;
-
-    // Warning: Never access these fields directly as access needs to be thread-safe
-    private PropertyCounts? _counts;
+    private RuntimePropertyBase[]? _snapshottableProperties;
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -34,17 +33,29 @@ public class RuntimeComplexType : RuntimeTypeBase, IRuntimeComplexType
         RuntimeComplexProperty complexProperty,
         ChangeTrackingStrategy changeTrackingStrategy,
         PropertyInfo? indexerPropertyInfo,
-        bool propertyBag)
-        : base(name, type, complexProperty.DeclaringType.Model, null, changeTrackingStrategy, indexerPropertyInfo, propertyBag)
+        bool propertyBag,
+        string? discriminatorProperty,
+        object? discriminatorValue,
+        int propertyCount,
+        int complexPropertyCount)
+        : base(
+            name, type, complexProperty.DeclaringType.Model, baseType: null, changeTrackingStrategy, indexerPropertyInfo, propertyBag,
+            discriminatorProperty, discriminatorValue,
+            derivedTypesCount: 0,
+            propertyCount: propertyCount,
+            complexPropertyCount: complexPropertyCount)
     {
         ComplexProperty = complexProperty;
-        FundamentalEntityType = complexProperty.DeclaringType switch
+        ContainingEntityType = complexProperty.DeclaringType switch
         {
             RuntimeEntityType entityType => entityType,
-            RuntimeComplexType declaringComplexType => declaringComplexType.FundamentalEntityType,
+            RuntimeComplexType declaringComplexType => declaringComplexType.ContainingEntityType,
             _ => throw new NotImplementedException()
         };
     }
+
+    private new RuntimeComplexType? BaseType
+        => (RuntimeComplexType?)base.BaseType;
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -60,12 +71,52 @@ public class RuntimeComplexType : RuntimeTypeBase, IRuntimeComplexType
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    private RuntimeEntityType FundamentalEntityType { get; }
+    private RuntimeEntityType ContainingEntityType { get; }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public override IEnumerable<RuntimePropertyBase> GetMembers()
+        => GetProperties()
+            .Concat<RuntimePropertyBase>(GetComplexProperties());
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public override IEnumerable<RuntimePropertyBase> GetDeclaredMembers()
+        => GetDeclaredProperties()
+            .Concat<RuntimePropertyBase>(GetDeclaredComplexProperties());
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public override RuntimePropertyBase? FindMember(string name)
+        => FindProperty(name)
+            ?? ((RuntimePropertyBase?)FindComplexProperty(name));
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public override IEnumerable<RuntimePropertyBase> FindMembersInHierarchy(string name)
+        => FindPropertiesInHierarchy(name)
+            .Concat<RuntimePropertyBase>(FindComplexPropertiesInHierarchy(name));
 
     /// <summary>
     ///     Gets or sets the <see cref="InstantiationBinding" /> for the preferred constructor.
     /// </summary>
-    public virtual InstantiationBinding? ConstructorBinding
+    public override InstantiationBinding? ConstructorBinding
     {
         get => !ClrType.IsAbstract
             ? NonCapturingLazyInitializer.EnsureInitialized(
@@ -104,15 +155,37 @@ public class RuntimeComplexType : RuntimeTypeBase, IRuntimeComplexType
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    protected override PropertyCounts Counts
-        => NonCapturingLazyInitializer.EnsureInitialized(ref _counts, this, static complexType => complexType.CalculateCounts());
+    public override IEnumerable<RuntimePropertyBase> GetSnapshottableMembers()
+    {
+        return NonCapturingLazyInitializer.EnsureInitialized(
+            ref _snapshottableProperties, this,
+            static type => Create(type).ToArray());
+
+        static IEnumerable<RuntimePropertyBase> Create(RuntimeComplexType type)
+        {
+            foreach (var property in type.GetProperties())
+            {
+                yield return property;
+            }
+
+            foreach (var complexProperty in type.GetComplexProperties())
+            {
+                yield return complexProperty;
+
+                foreach (var propertyBase in complexProperty.ComplexType.GetSnapshottableMembers())
+                {
+                    yield return propertyBase;
+                }
+            }
+        }
+    }
 
     /// <summary>
     ///     Returns a string that represents the current object.
     /// </summary>
     /// <returns>A string that represents the current object.</returns>
     public override string ToString()
-        => ((IReadOnlyEntityType)this).ToDebugString(MetadataDebugStringOptions.SingleLineDefault);
+        => ((IReadOnlyComplexType)this).ToDebugString(MetadataDebugStringOptions.SingleLineDefault);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -162,16 +235,54 @@ public class RuntimeComplexType : RuntimeTypeBase, IRuntimeComplexType
     }
 
     /// <inheritdoc />
-    IReadOnlyEntityType IReadOnlyTypeBase.FundamentalEntityType
+    IReadOnlyEntityType IReadOnlyTypeBase.ContainingEntityType
     {
         [DebuggerStepThrough]
-        get => FundamentalEntityType;
+        get => ContainingEntityType;
     }
 
     /// <inheritdoc />
-    IEntityType ITypeBase.FundamentalEntityType
+    IEntityType ITypeBase.ContainingEntityType
     {
         [DebuggerStepThrough]
-        get => FundamentalEntityType;
+        get => ContainingEntityType;
     }
+
+    /// <inheritdoc />
+    IReadOnlyComplexType? IReadOnlyComplexType.BaseType
+    {
+        [DebuggerStepThrough]
+        get => BaseType;
+    }
+
+    /// <inheritdoc />
+    IComplexType? IComplexType.BaseType
+    {
+        [DebuggerStepThrough]
+        get => BaseType;
+    }
+
+    /// <inheritdoc />
+    PropertyCounts? IRuntimeComplexType.Counts { get; set; }
+
+    /// <inheritdoc />
+    [DebuggerStepThrough]
+    IEnumerable<IReadOnlyComplexType> IReadOnlyComplexType.GetDerivedTypes()
+        => GetDerivedTypes<RuntimeComplexType>();
+
+    /// <inheritdoc />
+    IEnumerable<IReadOnlyComplexType> IReadOnlyComplexType.GetDerivedTypesInclusive()
+        => !HasDirectlyDerivedTypes
+            ? [this]
+            : new[] { this }.Concat(GetDerivedTypes<RuntimeComplexType>());
+
+    /// <inheritdoc />
+    [DebuggerStepThrough]
+    IEnumerable<IReadOnlyComplexType> IReadOnlyComplexType.GetDirectlyDerivedTypes()
+        => DirectlyDerivedTypes.Cast<RuntimeComplexType>();
+
+    /// <inheritdoc />
+    [DebuggerStepThrough]
+    IEnumerable<IComplexType> IComplexType.GetDirectlyDerivedTypes()
+        => DirectlyDerivedTypes.Cast<RuntimeComplexType>();
 }

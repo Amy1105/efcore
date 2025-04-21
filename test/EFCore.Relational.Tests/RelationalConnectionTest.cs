@@ -101,13 +101,7 @@ public class RelationalConnectionTest
             Assert.Throws<InvalidOperationException>(() => context.Database.GetDbConnection()).Message);
     }
 
-    private class ConstructorTestContext1A : DbContext
-    {
-        public ConstructorTestContext1A(DbContextOptions options)
-            : base(options)
-        {
-        }
-    }
+    private class ConstructorTestContext1A(DbContextOptions options) : DbContext(options);
 
     private class ConstructorTestContextNoConfiguration : DbContext
     {
@@ -895,6 +889,24 @@ public class RelationalConnectionTest
     }
 
     [ConditionalFact]
+    public void Can_create_new_connection_with_CommandTimeout_set_to_zero()
+    {
+        using var connection = new FakeRelationalConnection(
+            CreateOptions(
+                new FakeRelationalOptionsExtension()
+                    .WithConnectionString("Database=FrodoLives")
+                    .WithCommandTimeout(0)));
+        Assert.Equal(0, connection.CommandTimeout);
+    }
+
+    [ConditionalFact]
+    public void Throws_if_create_new_connection_with_CommandTimeout_negative()
+        => Assert.Throws<InvalidOperationException>(
+            () => new FakeRelationalOptionsExtension()
+                .WithConnectionString("Database=FrodoLives")
+                .WithCommandTimeout(-1));
+
+    [ConditionalFact]
     public void Can_set_CommandTimeout()
     {
         using var connection = new FakeRelationalConnection(
@@ -902,6 +914,16 @@ public class RelationalConnectionTest
         connection.CommandTimeout = 88;
 
         Assert.Equal(88, connection.CommandTimeout);
+    }
+
+    [ConditionalFact]
+    public void Can_set_CommandTimeout_to_zero()
+    {
+        using var connection = new FakeRelationalConnection(
+            CreateOptions(new FakeRelationalOptionsExtension().WithConnectionString("Database=FrodoLives")));
+        connection.CommandTimeout = 0;
+
+        Assert.Equal(0, connection.CommandTimeout);
     }
 
     [ConditionalFact]
@@ -961,13 +983,8 @@ public class RelationalConnectionTest
             return serviceCollection;
         }
 
-        private sealed class ExtensionInfo : RelationalExtensionInfo
+        private sealed class ExtensionInfo(IDbContextOptionsExtension extension) : RelationalExtensionInfo(extension)
         {
-            public ExtensionInfo(IDbContextOptionsExtension extension)
-                : base(extension)
-            {
-            }
-
             public override void PopulateDebugInfo(IDictionary<string, string> debugInfo)
             {
             }
@@ -1056,6 +1073,32 @@ public class RelationalConnectionTest
         Assert.Equal(ConnectionState.Open, dbConnection.State);
     }
 
+    [ConditionalFact]
+    public async Task Reports_command_diagnostic_on_cancellation()
+    {
+        var exception = new OperationCanceledException();
+
+        var connection = new FakeRelationalConnection(
+            CreateOptions(new FakeRelationalOptionsExtension().WithConnectionString("Database=FrodoLives")));
+
+        var diagnostics = connection.ConnectionDiagnosticEvents;
+
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await connection.OpenAsync(new CancellationToken(canceled: true)));
+
+        Assert.Collection(
+            diagnostics,
+            d => Assert.Equal(RelationalEventId.ConnectionCreating.Name, d.Item1),
+            d => Assert.Equal(RelationalEventId.ConnectionCreated.Name, d.Item1),
+            d => Assert.Equal(RelationalEventId.ConnectionOpening.Name, d.Item1),
+            d =>
+            {
+                Assert.Equal(RelationalEventId.ConnectionCanceled.Name, d.Item1);
+                var eventData = (ConnectionEndEventData)d.Item2;
+                Assert.Same(connection.DbConnection, eventData.Connection);
+                Assert.True(eventData.IsAsync);
+            });
+    }
+
     private static IDbContextOptions CreateOptions(params RelationalOptionsExtension[] optionsExtensions)
     {
         var optionsBuilder = new DbContextOptionsBuilder();
@@ -1066,5 +1109,27 @@ public class RelationalConnectionTest
         }
 
         return optionsBuilder.Options;
+    }
+
+    private class FakeLoggingOptions(bool sensitiveDataLoggingEnabled, bool detailedErrorsEnabled = false) : ILoggingOptions
+    {
+        public void Initialize(IDbContextOptions options)
+        {
+        }
+
+        public void Validate(IDbContextOptions options)
+        {
+        }
+
+        public bool IsSensitiveDataLoggingEnabled { get; } = sensitiveDataLoggingEnabled;
+        public bool IsSensitiveDataLoggingWarned { get; set; }
+
+        public bool DetailedErrorsEnabled { get; } = detailedErrorsEnabled;
+
+        public WarningsConfiguration WarningsConfiguration
+            => null;
+
+        public virtual bool ShouldWarnForStringEnumValueInJson(Type enumType)
+            => true;
     }
 }

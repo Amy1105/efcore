@@ -15,6 +15,10 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 /// </summary>
 public class InExpression : SqlExpression
 {
+    private static ConstructorInfo? _quotingConstructorWithSubquery;
+    private static ConstructorInfo? _quotingConstructorWithValues;
+    private static ConstructorInfo? _quotingConstructorWithValuesParameter;
+
     /// <summary>
     ///     Creates a new instance of the <see cref="InExpression" /> class, representing a SQL <c>IN</c> expression with a subquery.
     /// </summary>
@@ -67,12 +71,14 @@ public class InExpression : SqlExpression
         RelationalTypeMapping? typeMapping)
         : base(typeof(bool), typeMapping)
     {
-#if DEBUG
-        if (subquery?.IsMutable() == true)
+        Check.DebugAssert(subquery?.IsMutable != true, "Mutable subquery provided to ExistsExpression");
+
+        if ((subquery is null ? 0 : 1) + (values is null ? 0 : 1) + (valuesParameter is null ? 0 : 1) != 1)
         {
-            throw new InvalidOperationException();
+            throw new ArgumentException(
+                RelationalStrings.OneOfThreeValuesMustBeSet(nameof(subquery), nameof(values), nameof(valuesParameter)));
         }
-#endif
+
         Item = item;
         Subquery = subquery;
         Values = values;
@@ -187,17 +193,37 @@ public class InExpression : SqlExpression
         SelectExpression? subquery,
         IReadOnlyList<SqlExpression>? values,
         SqlParameterExpression? valuesParameter)
-    {
-        if ((subquery is null ? 0 : 1) + (values is null ? 0 : 1) + (valuesParameter is null ? 0 : 1) != 1)
-        {
-            throw new ArgumentException(
-                RelationalStrings.OneOfThreeValuesMustBeSet(nameof(subquery), nameof(values), nameof(valuesParameter)));
-        }
-
-        return item == Item && subquery == Subquery && values == Values && valuesParameter == ValuesParameter
+        => item == Item && subquery == Subquery && values == Values && valuesParameter == ValuesParameter
             ? this
             : new InExpression(item, subquery, values, valuesParameter, TypeMapping);
-    }
+
+    /// <inheritdoc />
+    public override Expression Quote()
+        => this switch
+        {
+            { Subquery: not null } => New(
+                _quotingConstructorWithSubquery ??= typeof(InExpression).GetConstructor(
+                    [typeof(SqlExpression), typeof(SelectExpression), typeof(RelationalTypeMapping)])!,
+                Item.Quote(),
+                Subquery.Quote(),
+                RelationalExpressionQuotingUtilities.QuoteTypeMapping(TypeMapping)),
+
+            { Values: not null } => New(
+                _quotingConstructorWithValues ??= typeof(InExpression).GetConstructor(
+                    [typeof(SqlExpression), typeof(IReadOnlyList<SqlExpression>), typeof(RelationalTypeMapping)])!,
+                Item.Quote(),
+                NewArrayInit(typeof(SqlExpression), initializers: Values.Select(v => v.Quote())),
+                RelationalExpressionQuotingUtilities.QuoteTypeMapping(TypeMapping)),
+
+            { ValuesParameter: not null } => New(
+                _quotingConstructorWithValuesParameter ??= typeof(InExpression).GetConstructor(
+                    [typeof(SqlExpression), typeof(SqlParameterExpression), typeof(RelationalTypeMapping)])!,
+                Item.Quote(),
+                ValuesParameter.Quote(),
+                RelationalExpressionQuotingUtilities.QuoteTypeMapping(TypeMapping)),
+
+            _ => throw new UnreachableException()
+        };
 
     /// <inheritdoc />
     protected override void Print(ExpressionPrinter expressionPrinter)
@@ -206,36 +232,36 @@ public class InExpression : SqlExpression
         expressionPrinter.Append(" IN ");
         expressionPrinter.Append("(");
 
-            switch (this)
-            {
-                case { Subquery: not null }:
-                    using (expressionPrinter.Indent())
+        switch (this)
+        {
+            case { Subquery: not null }:
+                using (expressionPrinter.Indent())
+                {
+                    expressionPrinter.Visit(Subquery);
+                }
+
+                break;
+
+            case { Values: not null }:
+                for (var i = 0; i < Values.Count; i++)
+                {
+                    if (i > 0)
                     {
-                        expressionPrinter.Visit(Subquery);
+                        expressionPrinter.Append(", ");
                     }
 
-                    break;
+                    expressionPrinter.Visit(Values[i]);
+                }
 
-                case { Values: not null }:
-                    for (var i = 0; i < Values.Count; i++)
-                    {
-                        if (i > 0)
-                        {
-                            expressionPrinter.Append(", ");
-                        }
+                break;
 
-                        expressionPrinter.Visit(Values[i]);
-                    }
+            case { ValuesParameter: not null }:
+                expressionPrinter.Visit(ValuesParameter);
+                break;
 
-                    break;
-
-                case { ValuesParameter: not null}:
-                    expressionPrinter.Visit(ValuesParameter);
-                    break;
-
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
 
         expressionPrinter.Append(")");
     }

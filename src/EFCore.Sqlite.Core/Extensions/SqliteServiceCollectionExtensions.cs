@@ -105,11 +105,11 @@ public static class SqliteServiceCollectionExtensions
             .TryAdd<IRelationalDatabaseCreator, SqliteDatabaseCreator>()
             .TryAdd<IHistoryRepository, SqliteHistoryRepository>()
             .TryAdd<IRelationalQueryStringFactory, SqliteQueryStringFactory>()
+            .TryAdd<IQueryCompilationContextFactory, SqliteQueryCompilationContextFactory>()
             .TryAdd<IMethodCallTranslatorProvider, SqliteMethodCallTranslatorProvider>()
             .TryAdd<IAggregateMethodCallTranslatorProvider, SqliteAggregateMethodCallTranslatorProvider>()
             .TryAdd<IMemberTranslatorProvider, SqliteMemberTranslatorProvider>()
             .TryAdd<IQuerySqlGeneratorFactory, SqliteQuerySqlGeneratorFactory>()
-            .TryAdd<IQueryTranslationPreprocessorFactory, SqliteQueryTranslationPreprocessorFactory>()
             .TryAdd<IQueryableMethodTranslatingExpressionVisitorFactory, SqliteQueryableMethodTranslatingExpressionVisitorFactory>()
             .TryAdd<IRelationalSqlTranslatingExpressionVisitorFactory, SqliteSqlTranslatingExpressionVisitorFactory>()
             .TryAdd<IQueryTranslationPostprocessorFactory, SqliteQueryTranslationPostprocessorFactory>()
@@ -117,9 +117,8 @@ public static class SqliteServiceCollectionExtensions
             .TryAdd<ISqlExpressionFactory, SqliteSqlExpressionFactory>()
             .TryAdd<IRelationalParameterBasedSqlProcessorFactory, SqliteParameterBasedSqlProcessorFactory>()
             .TryAddProviderSpecificServices(
-                b => b.TryAddScoped<ISqliteRelationalConnection, SqliteRelationalConnection>());
-
-        builder.TryAddCoreServices();
+                b => b.TryAddScoped<ISqliteRelationalConnection, SqliteRelationalConnection>())
+            .TryAddCoreServices();
 
         return serviceCollection;
     }

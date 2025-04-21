@@ -10,6 +10,8 @@ namespace Microsoft.EntityFrameworkCore.Storage.Json;
 /// </summary>
 public sealed class JsonDoubleReaderWriter : JsonValueReaderWriter<double>
 {
+    private static readonly PropertyInfo InstanceProperty = typeof(JsonDoubleReaderWriter).GetProperty(nameof(Instance))!;
+
     /// <summary>
     ///     The singleton instance of this stateless reader/writer.
     /// </summary>
@@ -20,10 +22,14 @@ public sealed class JsonDoubleReaderWriter : JsonValueReaderWriter<double>
     }
 
     /// <inheritdoc />
-    public override double FromJsonTyped(ref Utf8JsonReaderManager manager)
+    public override double FromJsonTyped(ref Utf8JsonReaderManager manager, object? existingObject = null)
         => manager.CurrentReader.GetDouble();
 
     /// <inheritdoc />
     public override void ToJsonTyped(Utf8JsonWriter writer, double value)
         => writer.WriteNumberValue(value);
+
+    /// <inheritdoc />
+    public override Expression ConstructorExpression
+        => Expression.Property(null, InstanceProperty);
 }

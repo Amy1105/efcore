@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Microsoft.EntityFrameworkCore.Diagnostics.Internal;
 using Microsoft.EntityFrameworkCore.Storage.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Storage;
@@ -25,7 +26,8 @@ public class RawSqlCommandBuilderTest
                     new TestRelationalTypeMappingSource(
                         TestServiceFactory.Instance.Create<TypeMappingSourceDependencies>(),
                         TestServiceFactory.Instance.Create<RelationalTypeMappingSourceDependencies>()),
-                    new ExceptionDetector())),
+                    new ExceptionDetector(),
+                    new LoggingOptions())),
             new RelationalSqlGenerationHelper(
                 new RelationalSqlGenerationHelperDependencies()),
             new ParameterNameGeneratorFactory(
@@ -39,7 +41,7 @@ public class RawSqlCommandBuilderTest
     {
         var builder = CreateBuilder();
 
-        var rawSqlCommand = builder.Build("SQL COMMAND TEXT", Array.Empty<object>());
+        var rawSqlCommand = builder.Build("SQL COMMAND TEXT", []);
 
         Assert.Equal("SQL COMMAND TEXT", rawSqlCommand.RelationalCommand.CommandText);
         Assert.Equal(0, rawSqlCommand.RelationalCommand.Parameters.Count);

@@ -7,7 +7,9 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using Microsoft.Data.Sqlite.Properties;
 using SQLitePCL;
 using static SQLitePCL.raw;
@@ -26,7 +28,7 @@ namespace Microsoft.Data.Sqlite
         private const int SQLITE_WIN32_DATA_DIRECTORY_TYPE = 1;
         private const int SQLITE_WIN32_TEMP_DIRECTORY_TYPE = 2;
 
-        private readonly List<WeakReference<SqliteCommand>> _commands = new();
+        private readonly List<WeakReference<SqliteCommand>> _commands = [];
 
         private Dictionary<string, (object? state, strdelegate_collation? collation)>? _collations;
 
@@ -46,44 +48,58 @@ namespace Microsoft.Data.Sqlite
         private static readonly StateChangeEventArgs _fromClosedToOpenEventArgs = new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open);
         private static readonly StateChangeEventArgs _fromOpenToClosedEventArgs = new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed);
 
+        private static string[]? NativeDllSearchDirectories;
+
         static SqliteConnection()
         {
             Type.GetType("SQLitePCL.Batteries_V2, SQLitePCLRaw.batteries_v2")
                 ?.GetRuntimeMethod("Init", Type.EmptyTypes)
                 ?.Invoke(null, null);
 
-            var appDataType = Type.GetType("Windows.Storage.ApplicationData, Windows, ContentType=WindowsRuntime")
-                ?? Type.GetType("Windows.Storage.ApplicationData, Microsoft.Windows.SDK.NET");
-
-            var storageFolderType = Type.GetType("Windows.Storage.StorageFolder, Windows, ContentType=WindowsRuntime")
-                ?? Type.GetType("Windows.Storage.StorageFolder, Microsoft.Windows.SDK.NET");
-
-            object? currentAppData = null;
-            try
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                currentAppData = appDataType?.GetRuntimeProperty("Current")?.GetValue(null);
-            }
-            catch (TargetInvocationException)
-            {
-                // Ignore "The process has no package identity."
-            }
-
-            if (currentAppData != null)
-            {
-                var localFolder = appDataType?.GetRuntimeProperty("LocalFolder")?.GetValue(currentAppData);
-                var localFolderPath = (string?)storageFolderType?.GetRuntimeProperty("Path")?.GetValue(localFolder);
-                if (localFolderPath != null)
+                Type? appDataType = null;
+                Type? storageFolderType = null;
+                try
                 {
-                    var rc = sqlite3_win32_set_directory(SQLITE_WIN32_DATA_DIRECTORY_TYPE, localFolderPath);
-                    Debug.Assert(rc == SQLITE_OK);
+                    appDataType = Type.GetType("Windows.Storage.ApplicationData, Windows, ContentType=WindowsRuntime")
+                        ?? Type.GetType("Windows.Storage.ApplicationData, Microsoft.Windows.SDK.NET");
+
+                    storageFolderType = Type.GetType("Windows.Storage.StorageFolder, Windows, ContentType=WindowsRuntime")
+                        ?? Type.GetType("Windows.Storage.StorageFolder, Microsoft.Windows.SDK.NET");
+                }
+                catch
+                {
+                    // Ignore "Could not load assembly." or any type initialization error.
                 }
 
-                var tempFolder = appDataType?.GetRuntimeProperty("TemporaryFolder")?.GetValue(currentAppData);
-                var tempFolderPath = (string?)storageFolderType?.GetRuntimeProperty("Path")?.GetValue(tempFolder);
-                if (tempFolderPath != null)
+                object? currentAppData = null;
+                try
                 {
-                    var rc = sqlite3_win32_set_directory(SQLITE_WIN32_TEMP_DIRECTORY_TYPE, tempFolderPath);
-                    Debug.Assert(rc == SQLITE_OK);
+                    currentAppData = appDataType?.GetRuntimeProperty("Current")?.GetValue(null);
+                }
+                catch (TargetInvocationException)
+                {
+                    // Ignore "The process has no package identity."
+                }
+
+                if (currentAppData != null)
+                {
+                    var localFolder = appDataType?.GetRuntimeProperty("LocalFolder")?.GetValue(currentAppData);
+                    var localFolderPath = (string?)storageFolderType?.GetRuntimeProperty("Path")?.GetValue(localFolder);
+                    if (localFolderPath != null)
+                    {
+                        var rc = sqlite3_win32_set_directory(SQLITE_WIN32_DATA_DIRECTORY_TYPE, localFolderPath);
+                        Debug.Assert(rc == SQLITE_OK);
+                    }
+
+                    var tempFolder = appDataType?.GetRuntimeProperty("TemporaryFolder")?.GetValue(currentAppData);
+                    var tempFolderPath = (string?)storageFolderType?.GetRuntimeProperty("Path")?.GetValue(tempFolder);
+                    if (tempFolderPath != null)
+                    {
+                        var rc = sqlite3_win32_set_directory(SQLITE_WIN32_TEMP_DIRECTORY_TYPE, tempFolderPath);
+                        Debug.Assert(rc == SQLITE_OK);
+                    }
                 }
             }
         }
@@ -211,7 +227,7 @@ namespace Microsoft.Data.Sqlite
         /// <summary>
         ///     Empties the connection pool.
         /// </summary>
-        /// <remarks>Any open connections will not be returned the the pool when closed.</remarks>
+        /// <remarks>Any open connections will not be returned to the pool when closed.</remarks>
         public static void ClearAllPools()
             => SqliteConnectionFactory.Instance.ClearPools();
 
@@ -219,7 +235,7 @@ namespace Microsoft.Data.Sqlite
         ///     Empties the connection pool associated with the connection.
         /// </summary>
         /// <param name="connection">The connection.</param>
-        /// <remarks>Any open connections will not be returned the the pool when closed.</remarks>
+        /// <remarks>Any open connections will not be returned to the pool when closed.</remarks>
         public static void ClearPool(SqliteConnection connection)
             => connection.PoolGroup.Clear();
 
@@ -324,22 +340,18 @@ namespace Microsoft.Data.Sqlite
 
             Transaction?.Dispose();
 
-            for (var i = _commands.Count - 1; i >= 0; i--)
+            var commands = _commands;
+            for (var i = commands.Count - 1; i >= 0; i--)
             {
-                var reference = _commands[i];
+                var reference = commands[i];
                 if (reference.TryGetTarget(out var command))
                 {
                     // NB: Calls RemoveCommand()
                     command.Dispose();
                 }
-                else
-                {
-                    _commands.RemoveAt(i);
-                }
             }
 
-            Debug.Assert(_commands.Count == 0);
-
+            _commands.Clear();
             _innerConnection!.Close();
             _innerConnection = null;
 
@@ -434,7 +446,9 @@ namespace Microsoft.Data.Sqlite
         {
             for (var i = _commands.Count - 1; i >= 0; i--)
             {
-                if (_commands[i].TryGetTarget(out var item)
+                var reference = _commands[i];
+                if (reference != null
+                    && reference.TryGetTarget(out var item)
                     && item == command)
                 {
                     _commands.RemoveAt(i);
@@ -612,11 +626,71 @@ namespace Microsoft.Data.Sqlite
 
         private void LoadExtensionCore(string file, string? proc)
         {
-            var rc = sqlite3_load_extension(Handle, utf8z.FromString(file), utf8z.FromString(proc), out var errmsg);
-            if (rc != SQLITE_OK)
+            SqliteException? firstException = null;
+            foreach (var path in GetLoadExtensionPaths(file))
             {
-                throw new SqliteException(Resources.SqliteNativeError(rc, errmsg.utf8_to_string()), rc, rc);
+                var rc = sqlite3_load_extension(Handle, utf8z.FromString(path), utf8z.FromString(proc), out var errmsg);
+                if (rc == SQLITE_OK)
+                {
+                    return;
+                }
+
+                if (firstException == null)
+                {
+                    // We store the first exception so that error message looks more obvious if file appears in there
+                    firstException = new SqliteException(Resources.SqliteNativeError(rc, errmsg.utf8_to_string()), rc, rc);
+                }
             }
+
+            if (firstException != null)
+            {
+                throw firstException;
+            }
+        }
+
+        private static IEnumerable<string> GetLoadExtensionPaths(string file)
+        {
+            // we always try original input first
+            yield return file;
+
+            string? dirName = Path.GetDirectoryName(file);
+
+            // we don't try to guess directories for user, if they pass a path either absolute or relative - they're on their own
+            if (!string.IsNullOrEmpty(dirName))
+            {
+                yield break;
+            }
+
+            bool shouldTryAddingLibPrefix = !file.StartsWith("lib", StringComparison.Ordinal) && !RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
+            if (shouldTryAddingLibPrefix)
+            {
+                yield return $"lib{file}";
+            }
+
+            NativeDllSearchDirectories ??= GetNativeDllSearchDirectories();
+
+            foreach (string dir in NativeDllSearchDirectories)
+            {
+                yield return Path.Combine(dir, file);
+
+                if (shouldTryAddingLibPrefix)
+                {
+                    yield return Path.Combine(dir, $"lib{file}");
+                }
+            }
+        }
+
+        private static string[] GetNativeDllSearchDirectories()
+        {
+            string? searchDirs = AppContext.GetData("NATIVE_DLL_SEARCH_DIRECTORIES") as string;
+
+            if (string.IsNullOrEmpty(searchDirs))
+            {
+                return [];
+            }
+
+            return searchDirs!.Split([ Path.PathSeparator ], StringSplitOptions.RemoveEmptyEntries);
         }
 
         /// <summary>
@@ -676,22 +750,22 @@ namespace Microsoft.Data.Sqlite
         }
 
         /// <summary>
-        ///     Returns schema information for the data source of this conneciton.
+        ///     Returns schema information for the data source of this connection.
         /// </summary>
         /// <returns>Schema information.</returns>
         public override DataTable GetSchema()
             => GetSchema(DbMetaDataCollectionNames.MetaDataCollections);
 
         /// <summary>
-        ///     Returns schema information for the data source of this conneciton.
+        ///     Returns schema information for the data source of this connection.
         /// </summary>
         /// <param name="collectionName">The name of the schema.</param>
         /// <returns>Schema information.</returns>
         public override DataTable GetSchema(string collectionName)
-            => GetSchema(collectionName, Array.Empty<string>());
+            => GetSchema(collectionName, []);
 
         /// <summary>
-        ///     Returns schema information for the data source of this conneciton.
+        ///     Returns schema information for the data source of this connection.
         /// </summary>
         /// <param name="collectionName">The name of the schema.</param>
         /// <param name="restrictionValues">The restrictions.</param>
@@ -738,7 +812,7 @@ namespace Microsoft.Data.Sqlite
                     rc = sqlite3_keyword_name(i, out keyword);
                     SqliteException.ThrowExceptionForRC(rc, null);
 
-                    dataTable.Rows.Add(new object[] { keyword });
+                    dataTable.Rows.Add([keyword]);
                 }
 
                 return dataTable;
@@ -821,22 +895,24 @@ namespace Microsoft.Data.Sqlite
             delegate_function_aggregate_step? func_step = null;
             if (func != null)
             {
-                func_step = (ctx, user_data, args) =>
+                func_step = static (ctx, user_data, args) =>
                 {
-                    var context = (AggregateContext<TAccumulate>)user_data;
+                    var definition = (AggregateDefinition<TAccumulate, TResult>)user_data;
+                    ctx.state ??= new AggregateContext<TAccumulate>(definition.Seed);
+
+                    var context = (AggregateContext<TAccumulate>)ctx.state;
                     if (context.Exception != null)
                     {
                         return;
                     }
 
                     // TODO: Avoid allocation when niladic
-                    var reader = new SqliteParameterReader(name, args);
+                    var reader = new SqliteParameterReader(definition.Name, args);
 
                     try
                     {
-                        // TODO: Avoid closure by passing func via user_data
                         // NB: No need to set ctx.state since we just mutate the instance
-                        context.Accumulate = func(context.Accumulate, reader);
+                        context.Accumulate = definition.Func!(context.Accumulate, reader);
                     }
                     catch (Exception ex)
                     {
@@ -848,16 +924,18 @@ namespace Microsoft.Data.Sqlite
             delegate_function_aggregate_final? func_final = null;
             if (resultSelector != null)
             {
-                func_final = (ctx, user_data) =>
+                func_final = static (ctx, user_data) =>
                 {
-                    var context = (AggregateContext<TAccumulate>)user_data;
+                    var definition = (AggregateDefinition<TAccumulate, TResult>)user_data;
+                    ctx.state ??= new AggregateContext<TAccumulate>(definition.Seed);
+
+                    var context = (AggregateContext<TAccumulate>)ctx.state;
 
                     if (context.Exception == null)
                     {
                         try
                         {
-                            // TODO: Avoid closure by passing resultSelector via user_data
-                            var result = resultSelector(context.Accumulate);
+                            var result = definition.ResultSelector!(context.Accumulate);
 
                             new SqliteResultBinder(ctx, result).Bind();
                         }
@@ -881,7 +959,7 @@ namespace Microsoft.Data.Sqlite
             }
 
             var flags = isDeterministic ? SQLITE_DETERMINISTIC : 0;
-            var state = new AggregateContext<TAccumulate>(seed);
+            var state = new AggregateDefinition<TAccumulate, TResult>(name, seed, func, resultSelector);
 
             if (State == ConnectionState.Open)
             {
@@ -915,12 +993,21 @@ namespace Microsoft.Data.Sqlite
             return values;
         }
 
-        private sealed class AggregateContext<T>
+        private sealed class AggregateDefinition<TAccumulate, TResult>(
+            string name,
+            TAccumulate seed,
+            Func<TAccumulate, SqliteValueReader, TAccumulate>? func,
+            Func<TAccumulate, TResult>? resultSelector)
         {
-            public AggregateContext(T seed)
-                => Accumulate = seed;
+            public string Name { get; } = name;
+            public TAccumulate Seed { get; } = seed;
+            public Func<TAccumulate, SqliteValueReader, TAccumulate>? Func { get; } = func;
+            public Func<TAccumulate, TResult>? ResultSelector { get; } = resultSelector;
+        }
 
-            public T Accumulate { get; set; }
+        private sealed class AggregateContext<T>(T seed)
+        {
+            public T Accumulate { get; set; } = seed;
             public Exception? Exception { get; set; }
         }
 

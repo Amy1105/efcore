@@ -3,9 +3,8 @@
 
 #nullable enable
 
-
-
 // ReSharper disable once CheckNamespace
+
 namespace System.Reflection;
 
 [DebuggerStepThrough]

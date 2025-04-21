@@ -3,7 +3,9 @@
 
 namespace Microsoft.EntityFrameworkCore.Query;
 
-public class OwnedEntityQuerySqliteTest : OwnedEntityQueryRelationalTestBase
+#nullable disable
+
+public class OwnedEntityQuerySqliteTest(NonSharedFixture fixture) : OwnedEntityQueryRelationalTestBase(fixture)
 {
     protected override ITestStoreFactory TestStoreFactory
         => SqliteTestStoreFactory.Instance;

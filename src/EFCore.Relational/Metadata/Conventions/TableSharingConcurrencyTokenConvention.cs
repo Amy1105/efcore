@@ -1,8 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-
 namespace Microsoft.EntityFrameworkCore.Metadata.Conventions;
 
 /// <summary>
@@ -47,28 +45,27 @@ public class TableSharingConcurrencyTokenConvention : IModelFinalizingConvention
         IConventionModelBuilder modelBuilder,
         IConventionContext<IConventionModelBuilder> context)
     {
-        var tableToEntityTypes = new Dictionary<(string Name, string? Schema), List<IConventionEntityType>>();
+        var tableToEntityTypes = new Dictionary<StoreObjectIdentifier, List<IConventionEntityType>>();
         foreach (var entityType in modelBuilder.Metadata.GetEntityTypes())
         {
-            var tableName = entityType.GetTableName();
-            if (tableName == null)
+            var table = StoreObjectIdentifier.Create(entityType, StoreObjectType.Table);
+            if (table == null)
             {
                 continue;
             }
 
-            var table = (tableName, entityType.GetSchema());
-            if (!tableToEntityTypes.TryGetValue(table, out var mappedTypes))
+            if (!tableToEntityTypes.TryGetValue(table.Value, out var mappedTypes))
             {
-                mappedTypes = new List<IConventionEntityType>();
-                tableToEntityTypes[table] = mappedTypes;
+                mappedTypes = [];
+                tableToEntityTypes[table.Value] = mappedTypes;
             }
 
             mappedTypes.Add(entityType);
         }
 
-        foreach (var ((name, schema), mappedTypes) in tableToEntityTypes)
+        foreach (var (table, mappedTypes) in tableToEntityTypes)
         {
-            var concurrencyColumns = GetConcurrencyTokensMap(StoreObjectIdentifier.Table(name, schema), mappedTypes);
+            var concurrencyColumns = GetConcurrencyTokensMap(table, mappedTypes);
             if (concurrencyColumns == null)
             {
                 continue;
@@ -79,20 +76,18 @@ public class TableSharingConcurrencyTokenConvention : IModelFinalizingConvention
                 Dictionary<IConventionEntityType, IReadOnlyProperty>? entityTypesMissingConcurrencyColumn = null;
                 foreach (var entityType in mappedTypes)
                 {
+                    Check.DebugAssert(readOnlyProperties.Count != 0, $"No properties mapped to column '{concurrencyColumnName}'");
+
                     var foundMappedProperty = !IsConcurrencyTokenMissing(readOnlyProperties, entityType, mappedTypes)
                         || entityType.GetProperties()
-                            .Any(p => p.GetColumnName(StoreObjectIdentifier.Table(name, schema)) == concurrencyColumnName);
+                            .Any(p => p.GetColumnName(table) == concurrencyColumnName);
 
                     if (!foundMappedProperty)
                     {
                         entityTypesMissingConcurrencyColumn ??= new Dictionary<IConventionEntityType, IReadOnlyProperty>();
 
-                        // store the entity type which is missing the
-                        // concurrency token property, mapped to an example
-                        // property which _is_ mapped to this concurrency token
-                        // column and which will be used later as a template
-                        entityTypesMissingConcurrencyColumn.Add(
-                            entityType, readOnlyProperties.First());
+                        // store the concurrency token property to be used later as a template
+                        entityTypesMissingConcurrencyColumn.Add(entityType, readOnlyProperties.First());
                     }
                 }
 
@@ -162,13 +157,23 @@ public class TableSharingConcurrencyTokenConvention : IModelFinalizingConvention
         var nonHierarchyTypesCount = 0;
         foreach (var entityType in mappedTypes)
         {
-            if (entityType.BaseType == null
-                || !mappedTypes.Contains(entityType.BaseType))
+            if ((entityType.BaseType == null && !mappedTypes.Any(t => t.BaseType == entityType))
+                || (entityType.BaseType != null && !mappedTypes.Contains(entityType.BaseType)))
             {
                 nonHierarchyTypesCount++;
             }
 
-            foreach (var property in entityType.GetDeclaredProperties())
+            concurrencyColumns = FindConcurrencyColumns(entityType, storeObject, concurrencyColumns);
+        }
+
+        return nonHierarchyTypesCount < 1 ? null : concurrencyColumns;
+
+        static Dictionary<string, List<IReadOnlyProperty>>? FindConcurrencyColumns(
+            IReadOnlyTypeBase structuralType,
+            StoreObjectIdentifier storeObject,
+            Dictionary<string, List<IReadOnlyProperty>>? concurrencyColumns)
+        {
+            foreach (var property in structuralType.GetProperties())
             {
                 if (!property.IsConcurrencyToken
                     || (property.ValueGenerated & ValueGenerated.OnUpdate) == 0)
@@ -183,18 +188,22 @@ public class TableSharingConcurrencyTokenConvention : IModelFinalizingConvention
                 }
 
                 concurrencyColumns ??= new Dictionary<string, List<IReadOnlyProperty>>();
-
                 if (!concurrencyColumns.TryGetValue(columnName, out var properties))
                 {
-                    properties = new List<IReadOnlyProperty>();
+                    properties = [];
                     concurrencyColumns[columnName] = properties;
                 }
 
                 properties.Add(property);
             }
-        }
 
-        return nonHierarchyTypesCount < 2 ? null : concurrencyColumns;
+            foreach (var complexProperty in structuralType.GetComplexProperties())
+            {
+                concurrencyColumns = FindConcurrencyColumns(complexProperty.ComplexType, storeObject, concurrencyColumns);
+            }
+
+            return concurrencyColumns;
+        }
     }
 
     /// <summary>
@@ -209,8 +218,7 @@ public class TableSharingConcurrencyTokenConvention : IModelFinalizingConvention
         IReadOnlyEntityType entityType,
         IReadOnlyList<IReadOnlyEntityType> mappedTypes)
     {
-        if (entityType.FindPrimaryKey() == null
-            || propertiesMappedToConcurrencyColumn.Count == 0)
+        if (entityType.FindPrimaryKey() == null)
         {
             return false;
         }
@@ -218,21 +226,20 @@ public class TableSharingConcurrencyTokenConvention : IModelFinalizingConvention
         var propertyMissing = true;
         foreach (var mappedProperty in propertiesMappedToConcurrencyColumn)
         {
-            var declaringType = mappedProperty.DeclaringType;
-            var declaringEntityType = declaringType as IEntityType;
-            if (declaringType.IsAssignableFrom(entityType)
-                || entityType.IsAssignableFrom(declaringType)
-                || declaringEntityType != null
-                    && (declaringEntityType.IsInOwnershipPath(entityType)
-                        || entityType.IsInOwnershipPath(declaringEntityType)))
+            var containingEntityType = mappedProperty.DeclaringType.ContainingEntityType;
+            if (containingEntityType.IsAssignableFrom(entityType)
+                || entityType.IsAssignableFrom(containingEntityType)
+                || containingEntityType.IsInOwnershipPath(entityType)
+                || entityType.IsInOwnershipPath(containingEntityType))
             {
-                // The concurrency token is on the base type, derived type or in the same aggregate
+                // The concurrency token is on the base type, derived type, a contained complex type or in the same aggregate
                 propertyMissing = false;
                 continue;
             }
 
-            var linkingFks = declaringEntityType?.FindForeignKeys(declaringEntityType.FindPrimaryKey()!.Properties)
-                .Where(fk => fk.PrincipalKey.IsPrimaryKey()
+            var linkingFks = containingEntityType.FindForeignKeys(containingEntityType.FindPrimaryKey()!.Properties)
+                .Where(
+                    fk => fk.PrincipalKey.IsPrimaryKey()
                         && mappedTypes.Contains(fk.PrincipalEntityType)).ToList();
             if (linkingFks != null
                 && linkingFks.Count > 0
@@ -259,9 +266,8 @@ public class TableSharingConcurrencyTokenConvention : IModelFinalizingConvention
             var baseType = entityType.BaseType;
             while (baseType != null)
             {
-                if (entityTypeDictionary.ContainsKey(baseType))
+                if (entityTypeDictionary.Remove(entityType))
                 {
-                    entityTypeDictionary.Remove(entityType);
                     removed = true;
                     break;
                 }

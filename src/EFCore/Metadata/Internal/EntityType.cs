@@ -60,11 +60,11 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     private InstantiationBinding? _constructorBinding;
     private InstantiationBinding? _serviceOnlyConstructorBinding;
 
-    private Func<InternalEntityEntry, ISnapshot>? _relationshipSnapshotFactory;
-    private Func<InternalEntityEntry, ISnapshot>? _originalValuesFactory;
-    private Func<InternalEntityEntry, ISnapshot>? _temporaryValuesFactory;
+    private Func<IInternalEntry, ISnapshot>? _relationshipSnapshotFactory;
+    private Func<IInternalEntry, ISnapshot>? _originalValuesFactory;
+    private Func<IInternalEntry, ISnapshot>? _temporaryValuesFactory;
     private Func<ISnapshot>? _storeGeneratedValuesFactory;
-    private Func<ValueBuffer, ISnapshot>? _shadowValuesFactory;
+    private Func<IDictionary<string, object?>, ISnapshot>? _shadowValuesFactory;
     private Func<ISnapshot>? _emptyShadowValuesFactory;
     private IProperty[]? _foreignKeyProperties;
     private IProperty[]? _valueGeneratingProperties;
@@ -150,7 +150,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     public new virtual InternalEntityTypeBuilder Builder
     {
         [DebuggerStepThrough]
-        get => _builder ?? throw new InvalidOperationException(CoreStrings.ObjectRemovedFromModel);
+        get => _builder ?? throw new InvalidOperationException(CoreStrings.ObjectRemovedFromModel(DisplayName()));
     }
 
     /// <summary>
@@ -204,6 +204,11 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
             }
         }
 
+        foreach (var property in Properties.Values)
+        {
+            Model.RemoveProperty(property);
+        }
+
         _builder = null;
         BaseType?.DirectlyDerivedTypes.Remove(this);
 
@@ -216,7 +221,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    new public virtual EntityType? BaseType
+    public new virtual EntityType? BaseType
         => (EntityType?)base.BaseType;
 
     /// <summary>
@@ -331,6 +336,15 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    public override TypeBase? SetBaseType(TypeBase? newBaseType, ConfigurationSource configurationSource)
+        => SetBaseType((EntityType?)newBaseType, configurationSource);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
     public virtual EntityType? SetBaseType(EntityType? newBaseType, ConfigurationSource configurationSource)
     {
         EnsureMutable();
@@ -418,9 +432,15 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     [DebuggerStepThrough]
-    public virtual ConfigurationSource? GetBaseTypeConfigurationSource()
+    public override ConfigurationSource? GetBaseTypeConfigurationSource()
         => _baseTypeConfigurationSource;
 
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
     [DebuggerStepThrough]
     private void UpdateBaseTypeConfigurationSource(ConfigurationSource configurationSource)
         => _baseTypeConfigurationSource = configurationSource.Max(_baseTypeConfigurationSource);
@@ -470,17 +490,8 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     [DebuggerStepThrough]
-    public virtual EntityType GetRootType()
-        => (EntityType)((IReadOnlyEntityType)this).GetRootType();
-
-    /// <summary>
-    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
-    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
-    ///     any release. You should only use it directly in your code with extreme caution and knowing that
-    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
-    /// </summary>
-    public override string ToString()
-        => ((IReadOnlyEntityType)this).ToDebugString(MetadataDebugStringOptions.SingleLineDefault);
+    new public virtual EntityType GetRootType()
+        => (EntityType)((IReadOnlyTypeBase)this).GetRootType();
 
     /// <summary>
     ///     Runs the conventions when an annotation was set or removed.
@@ -501,9 +512,9 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public override IEnumerable<IConventionPropertyBase> GetMembers()
-        => GetProperties().Cast<IConventionPropertyBase>()
-            .Concat(GetComplexProperties())
+    public override IEnumerable<PropertyBase> GetMembers()
+        => GetProperties()
+            .Concat<PropertyBase>(GetComplexProperties())
             .Concat(GetServiceProperties())
             .Concat(GetNavigations())
             .Concat(GetSkipNavigations());
@@ -514,9 +525,9 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public override IEnumerable<IConventionPropertyBase> GetDeclaredMembers()
-        => GetDeclaredProperties().Cast<IConventionPropertyBase>()
-            .Concat(GetDeclaredComplexProperties())
+    public override IEnumerable<PropertyBase> GetDeclaredMembers()
+        => GetDeclaredProperties()
+            .Concat<PropertyBase>(GetDeclaredComplexProperties())
             .Concat(GetDeclaredServiceProperties())
             .Concat(GetDeclaredNavigations())
             .Concat(GetDeclaredSkipNavigations());
@@ -527,9 +538,22 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public override IEnumerable<IConventionPropertyBase> FindMembersInHierarchy(string name)
-        => FindPropertiesInHierarchy(name).Cast<IConventionPropertyBase>()
-            .Concat(FindComplexPropertiesInHierarchy(name))
+    public override PropertyBase? FindMember(string name)
+        => FindProperty(name)
+            ?? FindNavigation(name)
+            ?? FindComplexProperty(name)
+            ?? FindSkipNavigation(name)
+            ?? ((PropertyBase?)FindServiceProperty(name));
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public override IEnumerable<PropertyBase> FindMembersInHierarchy(string name)
+        => FindPropertiesInHierarchy(name)
+            .Concat<PropertyBase>(FindComplexPropertiesInHierarchy(name))
             .Concat(FindServicePropertiesInHierarchy(name))
             .Concat(FindNavigationsInHierarchy(name))
             .Concat(FindSkipNavigationsInHierarchy(name));
@@ -758,7 +782,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
         {
             if (property.Keys == null)
             {
-                property.Keys = new List<Key> { key };
+                property.Keys = [key];
             }
             else
             {
@@ -808,9 +832,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public virtual Key? FindDeclaredKey(IReadOnlyList<IReadOnlyProperty> properties)
-        => _keys.TryGetValue(Check.NotEmpty(properties, nameof(properties)), out var key)
-            ? key
-            : null;
+        => _keys.GetValueOrDefault(Check.NotEmpty(properties, nameof(properties)));
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -983,7 +1005,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
 
         removed = foreignKey.PrincipalKey.ReferencingForeignKeys!.Remove(foreignKey);
         Check.DebugAssert(removed, "removed is false");
-        removed = foreignKey.PrincipalEntityType.DeclaredReferencingForeignKeys!.Remove(foreignKey);
+        removed = foreignKey.PrincipalEntityType._declaredReferencingForeignKeys!.Remove(foreignKey);
         Check.DebugAssert(removed, "removed is false");
     }
 
@@ -1002,7 +1024,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
         {
             if (property.ForeignKeys == null)
             {
-                property.ForeignKeys = new List<ForeignKey> { foreignKey };
+                property.ForeignKeys = [foreignKey];
             }
             else
             {
@@ -1022,13 +1044,13 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
         }
 
         var principalEntityType = foreignKey.PrincipalEntityType;
-        if (principalEntityType.DeclaredReferencingForeignKeys == null)
+        if (principalEntityType._declaredReferencingForeignKeys == null)
         {
-            principalEntityType.DeclaredReferencingForeignKeys = new SortedSet<ForeignKey>(ForeignKeyComparer.Instance) { foreignKey };
+            principalEntityType._declaredReferencingForeignKeys = new SortedSet<ForeignKey>(ForeignKeyComparer.Instance) { foreignKey };
         }
         else
         {
-            added = principalEntityType.DeclaredReferencingForeignKeys.Add(foreignKey);
+            added = principalEntityType._declaredReferencingForeignKeys.Add(foreignKey);
             Check.DebugAssert(added, "added is false");
         }
     }
@@ -1364,7 +1386,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     /// </summary>
     public virtual IEnumerable<ForeignKey> GetReferencingForeignKeys()
         => BaseType != null
-            ? (DeclaredReferencingForeignKeys?.Count ?? 0) == 0
+            ? (_declaredReferencingForeignKeys?.Count ?? 0) == 0
                 ? BaseType.GetReferencingForeignKeys()
                 : BaseType.GetReferencingForeignKeys().Concat(GetDeclaredReferencingForeignKeys())
             : GetDeclaredReferencingForeignKeys();
@@ -1376,9 +1398,9 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public virtual IEnumerable<ForeignKey> GetDeclaredReferencingForeignKeys()
-        => DeclaredReferencingForeignKeys ?? Enumerable.Empty<ForeignKey>();
+        => _declaredReferencingForeignKeys ?? Enumerable.Empty<ForeignKey>();
 
-    private SortedSet<ForeignKey>? DeclaredReferencingForeignKeys { get; set; }
+    private SortedSet<ForeignKey>? _declaredReferencingForeignKeys;
 
     #endregion
 
@@ -1520,9 +1542,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public virtual Navigation? FindDeclaredNavigation(string name)
-        => _navigations.TryGetValue(Check.NotEmpty(name, nameof(name)), out var navigation)
-            ? navigation
-            : null;
+        => _navigations.GetValueOrDefault(Check.NotEmpty(name, nameof(name)));
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -1668,14 +1688,14 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
 
         _skipNavigations.Add(name, skipNavigation);
 
-        if (targetEntityType.DeclaredReferencingSkipNavigations == null)
+        if (targetEntityType._declaredReferencingSkipNavigations == null)
         {
-            targetEntityType.DeclaredReferencingSkipNavigations =
+            targetEntityType._declaredReferencingSkipNavigations =
                 new SortedSet<SkipNavigation>(SkipNavigationComparer.Instance) { skipNavigation };
         }
         else
         {
-            var added = targetEntityType.DeclaredReferencingSkipNavigations.Add(skipNavigation);
+            var added = targetEntityType._declaredReferencingSkipNavigations.Add(skipNavigation);
             Check.DebugAssert(added, "added is false");
         }
 
@@ -1711,9 +1731,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public virtual SkipNavigation? FindDeclaredSkipNavigation(string name)
-        => _skipNavigations.TryGetValue(Check.NotEmpty(name, nameof(name)), out var navigation)
-            ? navigation
-            : null;
+        => _skipNavigations.GetValueOrDefault(Check.NotEmpty(name, nameof(name)));
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -1819,12 +1837,11 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
         var removed = _skipNavigations.Remove(navigation.Name);
         Check.DebugAssert(removed, "Expected the navigation to be removed");
 
-        removed = navigation.ForeignKey is ForeignKey foreignKey
-            ? foreignKey.ReferencingSkipNavigations!.Remove(navigation)
-            : true;
+        removed = navigation.ForeignKey is not ForeignKey foreignKey
+            || foreignKey.ReferencingSkipNavigations!.Remove(navigation);
         Check.DebugAssert(removed, "removed is false");
 
-        removed = navigation.TargetEntityType.DeclaredReferencingSkipNavigations!.Remove(navigation);
+        removed = navigation.TargetEntityType._declaredReferencingSkipNavigations!.Remove(navigation);
         Check.DebugAssert(removed, "removed is false");
 
         navigation.SetRemovedFromModel();
@@ -1853,7 +1870,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     /// </summary>
     public virtual IEnumerable<SkipNavigation> GetReferencingSkipNavigations()
         => BaseType != null
-            ? (DeclaredReferencingSkipNavigations?.Count ?? 0) == 0
+            ? (_declaredReferencingSkipNavigations?.Count ?? 0) == 0
                 ? BaseType.GetReferencingSkipNavigations()
                 : BaseType.GetReferencingSkipNavigations().Concat(GetDeclaredReferencingSkipNavigations())
             : GetDeclaredReferencingSkipNavigations();
@@ -1865,7 +1882,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public virtual IEnumerable<SkipNavigation> GetDeclaredReferencingSkipNavigations()
-        => DeclaredReferencingSkipNavigations ?? Enumerable.Empty<SkipNavigation>();
+        => _declaredReferencingSkipNavigations ?? Enumerable.Empty<SkipNavigation>();
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -1878,7 +1895,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
             ? Enumerable.Empty<SkipNavigation>()
             : GetDerivedTypes<EntityType>().SelectMany(et => et.GetDeclaredReferencingSkipNavigations());
 
-    private SortedSet<SkipNavigation>? DeclaredReferencingSkipNavigations { get; set; }
+    private SortedSet<SkipNavigation>? _declaredReferencingSkipNavigations;
 
     #endregion
 
@@ -2002,7 +2019,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
         {
             if (property.Indexes == null)
             {
-                property.Indexes = new List<Index> { index };
+                property.Indexes = [index];
             }
             else
             {
@@ -2076,9 +2093,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public virtual Index? FindDeclaredIndex(IReadOnlyList<IReadOnlyProperty> properties)
-        => _unnamedIndexes.TryGetValue(Check.NotEmpty(properties, nameof(properties)), out var index)
-            ? index
-            : null;
+        => _unnamedIndexes.GetValueOrDefault(Check.NotEmpty(properties, nameof(properties)));
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -2087,9 +2102,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public virtual Index? FindDeclaredIndex(string name)
-        => _namedIndexes.TryGetValue(Check.NotEmpty(name, nameof(name)), out var index)
-            ? index
-            : null;
+        => _namedIndexes.GetValueOrDefault(Check.NotEmpty(name, nameof(name)));
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -2101,7 +2114,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
         => DirectlyDerivedTypes.Count == 0
             ? Enumerable.Empty<Index>()
             : (IEnumerable<Index>)GetDerivedTypes<EntityType>()
-            .Select(et => et.FindDeclaredIndex(properties)).Where(i => i != null);
+                .Select(et => et.FindDeclaredIndex(properties)).Where(i => i != null);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -2253,13 +2266,22 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public virtual Func<InternalEntityEntry, ISnapshot> RelationshipSnapshotFactory
+    public override IEnumerable<PropertyBase> GetSnapshottableMembers()
+        => base.GetSnapshottableMembers().Concat(GetNavigations());
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public virtual Func<IInternalEntry, ISnapshot> RelationshipSnapshotFactory
         => NonCapturingLazyInitializer.EnsureInitialized(
             ref _relationshipSnapshotFactory, this,
             static entityType =>
             {
                 entityType.EnsureReadOnly();
-                return new RelationshipSnapshotFactoryFactory().Create(entityType);
+                return RelationshipSnapshotFactoryFactory.Instance.Create(entityType);
             });
 
     /// <summary>
@@ -2268,13 +2290,13 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public virtual Func<InternalEntityEntry, ISnapshot> OriginalValuesFactory
+    public virtual Func<IInternalEntry, ISnapshot> OriginalValuesFactory
         => NonCapturingLazyInitializer.EnsureInitialized(
             ref _originalValuesFactory, this,
             static entityType =>
             {
                 entityType.EnsureReadOnly();
-                return new OriginalValuesFactoryFactory().Create(entityType);
+                return OriginalValuesFactoryFactory.Instance.Create(entityType);
             });
 
     /// <summary>
@@ -2289,7 +2311,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
             static entityType =>
             {
                 entityType.EnsureReadOnly();
-                return new StoreGeneratedValuesFactoryFactory().CreateEmpty(entityType);
+                return StoreGeneratedValuesFactoryFactory.Instance.CreateEmpty(entityType);
             });
 
     /// <summary>
@@ -2298,13 +2320,13 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public virtual Func<InternalEntityEntry, ISnapshot> TemporaryValuesFactory
+    public virtual Func<IInternalEntry, ISnapshot> TemporaryValuesFactory
         => NonCapturingLazyInitializer.EnsureInitialized(
             ref _temporaryValuesFactory, this,
             static entityType =>
             {
                 entityType.EnsureReadOnly();
-                return new TemporaryValuesFactoryFactory().Create(entityType);
+                return TemporaryValuesFactoryFactory.Instance.Create(entityType);
             });
 
     /// <summary>
@@ -2313,13 +2335,13 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public virtual Func<ValueBuffer, ISnapshot> ShadowValuesFactory
+    public virtual Func<IDictionary<string, object?>, ISnapshot> ShadowValuesFactory
         => NonCapturingLazyInitializer.EnsureInitialized(
             ref _shadowValuesFactory, this,
             static entityType =>
             {
                 entityType.EnsureReadOnly();
-                return new ShadowValuesFactoryFactory().Create(entityType);
+                return ShadowValuesFactoryFactory.Instance.Create(entityType);
             });
 
     /// <summary>
@@ -2334,7 +2356,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
             static entityType =>
             {
                 entityType.EnsureReadOnly();
-                return new EmptyShadowValuesFactoryFactory().CreateEmpty(entityType);
+                return EmptyShadowValuesFactoryFactory.Instance.CreateEmpty(entityType);
             });
 
     /// <summary>
@@ -2438,9 +2460,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public virtual ServiceProperty? FindDeclaredServiceProperty(string name)
-        => _serviceProperties.TryGetValue(Check.NotEmpty(name, nameof(name)), out var property)
-            ? property
-            : null;
+        => _serviceProperties.GetValueOrDefault(Check.NotEmpty(name, nameof(name)));
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -2610,9 +2630,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     {
         Check.NotEmpty(modelName, nameof(modelName));
 
-        return _triggers.TryGetValue(modelName, out var trigger)
-            ? trigger
-            : null;
+        return _triggers.GetValueOrDefault(modelName);
     }
 
     /// <summary>
@@ -2636,12 +2654,10 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
         Check.DebugAssert(IsInModel, "The entity type has been removed from the model");
         EnsureMutable();
 
-        if (!_triggers.TryGetValue(modelName, out var trigger))
+        if (!_triggers.Remove(modelName, out var trigger))
         {
             return null;
         }
-
-        _triggers.Remove(modelName);
 
         trigger.SetRemovedFromModel();
 
@@ -2692,6 +2708,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
             propertiesList ??= GetProperties()
                 .Concat<IPropertyBase>(GetNavigations())
                 .Concat(GetSkipNavigations())
+                .Concat(GetComplexProperties())
                 .ToList();
             if (ClrType.IsAssignableFrom(type))
             {
@@ -2722,9 +2739,9 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
                             {
                                 try
                                 {
-                                    value = propertyInfo.GetValue(rawSeed, new[] { propertyBase.Name });
+                                    value = propertyInfo.GetValue(rawSeed, [propertyBase.Name]);
                                 }
-                                catch (Exception)
+                                catch
                                 {
                                     // Swallow if the property value is not set on the seed data
                                 }
@@ -2805,7 +2822,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     {
         EnsureMutable();
 
-        _data ??= new List<object>();
+        _data ??= [];
 
         foreach (var entity in data)
         {
@@ -2907,74 +2924,6 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    [Obsolete]
-    public virtual LambdaExpression? SetDefiningQuery(LambdaExpression? definingQuery, ConfigurationSource configurationSource)
-        => (LambdaExpression?)SetOrRemoveAnnotation(CoreAnnotationNames.DefiningQuery, definingQuery, configurationSource)?.Value;
-
-    /// <summary>
-    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
-    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
-    ///     any release. You should only use it directly in your code with extreme caution and knowing that
-    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
-    /// </summary>
-    public virtual Property? SetDiscriminatorProperty(Property? property, ConfigurationSource configurationSource)
-    {
-        CheckDiscriminatorProperty(property);
-
-        return ((string?)SetAnnotation(CoreAnnotationNames.DiscriminatorProperty, property?.Name, configurationSource)?.Value)
-            == property?.Name
-                ? property
-                : (Property?)((IReadOnlyEntityType)this).FindDiscriminatorProperty();
-    }
-
-    private void CheckDiscriminatorProperty(Property? property)
-    {
-        if (property != null)
-        {
-            if (BaseType != null)
-            {
-                throw new InvalidOperationException(
-                    CoreStrings.DiscriminatorPropertyMustBeOnRoot(DisplayName()));
-            }
-
-            if (property.DeclaringType != this)
-            {
-                throw new InvalidOperationException(
-                    CoreStrings.DiscriminatorPropertyNotFound(property.Name, DisplayName()));
-            }
-        }
-    }
-
-    /// <summary>
-    ///     Returns the name of the property that will be used for storing a discriminator value.
-    /// </summary>
-    /// <returns>The name of the property that will be used for storing a discriminator value.</returns>
-    public virtual string? GetDiscriminatorPropertyName()
-    {
-        if (BaseType != null)
-        {
-            return ((IReadOnlyEntityType)this).GetRootType().GetDiscriminatorPropertyName();
-        }
-
-        return (string?)this[CoreAnnotationNames.DiscriminatorProperty];
-    }
-
-    /// <summary>
-    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
-    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
-    ///     any release. You should only use it directly in your code with extreme caution and knowing that
-    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
-    /// </summary>
-    [DebuggerStepThrough]
-    public virtual ConfigurationSource? GetDiscriminatorPropertyConfigurationSource()
-        => FindAnnotation(CoreAnnotationNames.DiscriminatorProperty)?.GetConfigurationSource();
-
-    /// <summary>
-    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
-    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
-    ///     any release. You should only use it directly in your code with extreme caution and knowing that
-    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
-    /// </summary>
     public virtual bool IsImplicitlyCreatedJoinEntityType
         => GetConfigurationSource() == ConfigurationSource.Convention
             && ClrType == Model.DefaultPropertyBagType;
@@ -2985,7 +2934,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public virtual InstantiationBinding? ConstructorBinding
+    public override InstantiationBinding? ConstructorBinding
     {
         get => IsReadOnly && !ClrType.IsAbstract
             ? NonCapturingLazyInitializer.EnsureInitialized(
@@ -3089,6 +3038,26 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     private void UpdateServiceOnlyConstructorBindingConfigurationSource(ConfigurationSource configurationSource)
         => _serviceOnlyConstructorBindingConfigurationSource =
             configurationSource.Max(_serviceOnlyConstructorBindingConfigurationSource);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    [EntityFrameworkInternal]
+    public virtual Func<MaterializationContext, object> GetOrCreateMaterializer(IEntityMaterializerSource source)
+        => source.GetMaterializer(this);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    [EntityFrameworkInternal]
+    public virtual Func<MaterializationContext, object> GetOrCreateEmptyMaterializer(IEntityMaterializerSource source)
+        => source.GetEmptyMaterializer(this);
 
     #endregion
 
@@ -3201,30 +3170,6 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
         [DebuggerStepThrough]
         get => BaseType;
     }
-
-    /// <summary>
-    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
-    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
-    ///     any release. You should only use it directly in your code with extreme caution and knowing that
-    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
-    /// </summary>
-    [DebuggerStepThrough]
-    void IMutableEntityType.SetDiscriminatorProperty(IReadOnlyProperty? property)
-        => SetDiscriminatorProperty((Property?)property, ConfigurationSource.Explicit);
-
-    /// <summary>
-    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
-    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
-    ///     any release. You should only use it directly in your code with extreme caution and knowing that
-    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
-    /// </summary>
-    [DebuggerStepThrough]
-    IConventionProperty? IConventionEntityType.SetDiscriminatorProperty(
-        IReadOnlyProperty? property,
-        bool fromDataAnnotation)
-        => SetDiscriminatorProperty(
-            (Property?)property,
-            fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -4072,6 +4017,46 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     [DebuggerStepThrough]
+    IProperty? IEntityType.FindProperty(string name)
+        => FindProperty(name);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    [DebuggerStepThrough]
+    IProperty? IEntityType.FindDeclaredProperty(string name)
+        => FindDeclaredProperty(name);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    [DebuggerStepThrough]
+    IEnumerable<IProperty> IEntityType.GetDeclaredProperties()
+        => GetDeclaredProperties();
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    [DebuggerStepThrough]
+    IEnumerable<IProperty> IEntityType.GetProperties()
+        => GetProperties();
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    [DebuggerStepThrough]
     IMutableIndex IMutableEntityType.AddIndex(IReadOnlyList<IMutableProperty> properties)
         => AddIndex(properties as IReadOnlyList<Property> ?? properties.Cast<Property>().ToList(), ConfigurationSource.Explicit)!;
 
@@ -4793,4 +4778,13 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
         => new(
             () => ((IReadOnlyEntityType)this).ToDebugString(),
             () => ((IReadOnlyEntityType)this).ToDebugString(MetadataDebugStringOptions.LongDefault));
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public override string ToString()
+        => ((IReadOnlyEntityType)this).ToDebugString(MetadataDebugStringOptions.SingleLineDefault);
 }

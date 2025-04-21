@@ -137,7 +137,8 @@ Statement3
                 new RelationalCommandBuilderFactory(
                     new RelationalCommandBuilderDependencies(
                         typeMappingSource,
-                        new ExceptionDetector())),
+                        new ExceptionDetector(),
+                        new LoggingOptions())),
                 new FakeSqlGenerator(
                     new UpdateSqlGeneratorDependencies(
                         generationHelper,
@@ -151,7 +152,5 @@ Statement3
                 migrationsLogger));
     }
 
-    private class FakeDbContext : DbContext
-    {
-    }
+    private class FakeDbContext : DbContext;
 }

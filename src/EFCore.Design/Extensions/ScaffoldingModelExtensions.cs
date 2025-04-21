@@ -27,7 +27,9 @@ public static class ScaffoldingModelExtensions
             var primaryKey = entityType.FindPrimaryKey();
             var properties = entityType.GetProperties().ToList();
             var foreignKeys = entityType.GetForeignKeys().ToList();
+            var referencingForeignKeys = entityType.GetReferencingForeignKeys().ToList();
             if (primaryKey is { Properties.Count: > 1 }
+                && referencingForeignKeys.Count == 0
                 && foreignKeys.Count == 2
                 && primaryKey.Properties.Count == properties.Count
                 && foreignKeys[0].Properties.Count + foreignKeys[1].Properties.Count == properties.Count
@@ -396,7 +398,8 @@ public static class ScaffoldingModelExtensions
         var toTableArguments = new List<object?>();
 
         if (explicitSchema
-            || tableName != null && (tableName != entityType.GetDbSetName()
+            || tableName != null
+            && (tableName != entityType.GetDbSetName()
                 || (entityType.IsSimpleManyToManyJoinEntityType() && tableName != entityType.ShortName())))
         {
             toTableHandledByConventions = false;

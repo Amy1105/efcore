@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Data;
+using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore.Storage.Json;
 
 namespace Microsoft.EntityFrameworkCore.Storage;
@@ -21,16 +22,14 @@ public abstract class RelationalGeometryTypeMapping<TGeometry, TProvider> : Rela
     ///     Creates a new instance of the <see cref="RelationalGeometryTypeMapping{TGeometry,TProvider}" /> class.
     /// </summary>
     /// <param name="converter">The converter to use when converting to and from database types.</param>
-    /// <param name="jsonValueReaderWriter">Handles reading and writing JSON values for instances of the mapped type.</param>
     /// <param name="storeType">The store type name.</param>
+    /// <param name="jsonValueReaderWriter">Handles reading and writing JSON values for instances of the mapped type.</param>
     protected RelationalGeometryTypeMapping(
         ValueConverter<TGeometry, TProvider>? converter,
-        JsonValueReaderWriter? jsonValueReaderWriter,
-        string storeType)
+        string storeType,
+        JsonValueReaderWriter? jsonValueReaderWriter = null)
         : base(CreateRelationalTypeMappingParameters(storeType, jsonValueReaderWriter))
-    {
-        SpatialConverter = converter;
-    }
+        => SpatialConverter = converter;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="RelationalTypeMapping" /> class.
@@ -45,12 +44,12 @@ public abstract class RelationalGeometryTypeMapping<TGeometry, TProvider> : Rela
                 parameters.CoreParameters with
                 {
                     ProviderValueComparer = parameters.CoreParameters.ProviderValueComparer
-                    ?? CreateProviderValueComparer(
-                        parameters.CoreParameters.Converter?.ProviderClrType ?? parameters.CoreParameters.ClrType)
+                    ?? (RuntimeFeature.IsDynamicCodeSupported
+                        ? CreateProviderValueComparer(
+                            parameters.CoreParameters.Converter?.ProviderClrType ?? parameters.CoreParameters.ClrType)
+                        : throw new InvalidOperationException(CoreStrings.NativeAotNoCompiledModel))
                 }))
-    {
-        SpatialConverter = converter;
-    }
+        => SpatialConverter = converter;
 
     private static ValueComparer? CreateProviderValueComparer(Type providerType)
         => providerType.IsAssignableTo(typeof(TGeometry))
@@ -146,8 +145,8 @@ public abstract class RelationalGeometryTypeMapping<TGeometry, TProvider> : Rela
     public override Expression GenerateCodeLiteral(object value)
         => Expression.Convert(
             Expression.Call(
-                Expression.New(WKTReaderType),
-                WKTReaderType.GetMethod("Read", new[] { typeof(string) })!,
+                Expression.New(WktReaderType),
+                WktReaderType.GetMethod("Read", [typeof(string)])!,
                 Expression.Constant(CreateWktWithSrid(value), typeof(string))),
             value.GetType());
 
@@ -167,7 +166,7 @@ public abstract class RelationalGeometryTypeMapping<TGeometry, TProvider> : Rela
     ///     The type of the NTS 'WKTReader'.
     /// </summary>
     // ReSharper disable once InconsistentNaming
-    protected abstract Type WKTReaderType { get; }
+    protected abstract Type WktReaderType { get; }
 
     /// <summary>
     ///     Returns the Well-Known-Text (WKT) representation of the given object.

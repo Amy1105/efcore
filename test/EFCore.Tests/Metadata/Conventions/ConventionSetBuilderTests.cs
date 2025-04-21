@@ -2,13 +2,37 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore.InMemory.Metadata.Conventions;
 
 // ReSharper disable InconsistentNaming
 namespace Microsoft.EntityFrameworkCore.Metadata.Conventions;
 
 public class ConventionSetBuilderTests
 {
+    [ConditionalFact]
+    public void Can_create_a_model_builder_with_given_conventions_only()
+    {
+        var convention = new TestEntityTypeAddedConvention();
+        var conventions = new ConventionSet();
+        conventions.EntityTypeAddedConventions.Add(convention);
+
+        var modelBuilder = new ModelBuilder(conventions);
+
+        modelBuilder.Entity<Random>();
+
+        Assert.True(convention.Applied);
+        Assert.NotNull(modelBuilder.Model.FindEntityType(typeof(Random)));
+    }
+
+    private class TestEntityTypeAddedConvention : IEntityTypeAddedConvention
+    {
+        public bool Applied { get; private set; }
+
+        public void ProcessEntityTypeAdded(
+            IConventionEntityTypeBuilder entityTypeBuilder,
+            IConventionContext<IConventionEntityTypeBuilder> context)
+            => Applied = true;
+    }
+
     [ConditionalFact]
     public virtual IReadOnlyModel Can_build_a_model_with_default_conventions_without_DI()
     {

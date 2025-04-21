@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -255,12 +256,12 @@ public class InternalForeignKeyBuilder : AnnotatableBuilder<ForeignKey, Internal
 
             if (Metadata.GetPropertiesConfigurationSource() == configurationSource)
             {
-                dependentProperties = Array.Empty<Property>();
+                dependentProperties = [];
             }
 
             if (Metadata.GetPrincipalKeyConfigurationSource() == configurationSource)
             {
-                principalProperties = Array.Empty<Property>();
+                principalProperties = [];
             }
         }
 
@@ -1129,8 +1130,7 @@ public class InternalForeignKeyBuilder : AnnotatableBuilder<ForeignKey, Internal
         var newOwnership = newEntityType.GetForeignKeys().SingleOrDefault(fk => fk.IsOwnership);
         if (newOwnership == null)
         {
-            Check.DebugAssert(Metadata.IsInModel, "Metadata isn't in the model");
-            return Metadata.Builder;
+            return Metadata.IsInModel ? Metadata.Builder : null;
         }
 
         Check.DebugAssert(!Metadata.IsInModel, "Metadata is in the model");
@@ -1391,8 +1391,8 @@ public class InternalForeignKeyBuilder : AnnotatableBuilder<ForeignKey, Internal
             return null;
         }
 
-        var dependentProperties = (IReadOnlyList<Property>)Array.Empty<Property>();
-        var principalProperties = (IReadOnlyList<Property>)Array.Empty<Property>();
+        var dependentProperties = (IReadOnlyList<Property>) [];
+        var principalProperties = (IReadOnlyList<Property>) [];
         var builder = this;
         if (shouldInvert)
         {
@@ -1449,6 +1449,25 @@ public class InternalForeignKeyBuilder : AnnotatableBuilder<ForeignKey, Internal
         EntityType principalEntityType,
         EntityType dependentEntityType,
         ConfigurationSource? configurationSource)
+        => CanSetEntityTypes(
+            principalEntityType,
+            dependentEntityType,
+            configurationSource,
+            out _,
+            out _);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public virtual bool CanSetEntityTypes(
+        EntityType principalEntityType,
+        EntityType dependentEntityType,
+        ConfigurationSource? configurationSource,
+        out bool shouldResetToPrincipal,
+        out bool shouldResetToDependent)
         => CanSetRelatedTypes(
             principalEntityType,
             dependentEntityType,
@@ -1458,8 +1477,8 @@ public class InternalForeignKeyBuilder : AnnotatableBuilder<ForeignKey, Internal
             configurationSource,
             shouldThrow: false,
             out _,
-            out _,
-            out _,
+            out shouldResetToPrincipal,
+            out shouldResetToDependent,
             out _,
             out _,
             out _);
@@ -1510,7 +1529,7 @@ public class InternalForeignKeyBuilder : AnnotatableBuilder<ForeignKey, Internal
         {
             foreach (var referencingForeignKey in key.GetReferencingForeignKeys().ToList())
             {
-                detachedRelationships ??= new List<RelationshipSnapshot>();
+                detachedRelationships ??= [];
 
                 detachedRelationships.Add(InternalEntityTypeBuilder.DetachRelationship(referencingForeignKey));
             }
@@ -1660,7 +1679,7 @@ public class InternalForeignKeyBuilder : AnnotatableBuilder<ForeignKey, Internal
                 ? null
                 : ReplaceForeignKey(
                     configurationSource,
-                    dependentProperties: Array.Empty<Property>());
+                    dependentProperties: []);
         }
 
         properties = dependentEntityType.Builder.GetActualProperties(properties, configurationSource)!;
@@ -1692,7 +1711,7 @@ public class InternalForeignKeyBuilder : AnnotatableBuilder<ForeignKey, Internal
             configurationSource,
             dependentEntityTypeBuilder: dependentEntityType.Builder,
             dependentProperties: properties,
-            principalProperties: resetPrincipalKey ? Array.Empty<Property>() : null,
+            principalProperties: resetPrincipalKey ? [] : null,
             principalEndConfigurationSource: configurationSource,
             removeCurrent: !Property.AreCompatible(properties, Metadata.DeclaringEntityType));
     }
@@ -1873,7 +1892,7 @@ public class InternalForeignKeyBuilder : AnnotatableBuilder<ForeignKey, Internal
                 ? null
                 : ReplaceForeignKey(
                     configurationSource,
-                    principalProperties: Array.Empty<Property>());
+                    principalProperties: []);
         }
 
         properties = Metadata.PrincipalEntityType.Builder.GetActualProperties(properties, configurationSource)!;
@@ -1904,7 +1923,7 @@ public class InternalForeignKeyBuilder : AnnotatableBuilder<ForeignKey, Internal
         return ReplaceForeignKey(
             configurationSource,
             principalProperties: properties,
-            dependentProperties: resetDependent ? Array.Empty<Property>() : null,
+            dependentProperties: resetDependent ? [] : null,
             principalEndConfigurationSource: configurationSource,
             oldNameDependentProperties: oldNameDependentProperties,
             removeCurrent: oldNameDependentProperties != null);
@@ -2712,7 +2731,8 @@ public class InternalForeignKeyBuilder : AnnotatableBuilder<ForeignKey, Internal
 
         var oldLazyLoadingEnabledConfigurationSource = ((IConventionNavigation)oldNavigation).GetLazyLoadingEnabledConfigurationSource();
         if (oldLazyLoadingEnabledConfigurationSource.HasValue
-            && builder.CanSetLazyLoadingEnabled(((IReadOnlyNavigation)oldNavigation).LazyLoadingEnabled, oldLazyLoadingEnabledConfigurationSource.Value))
+            && builder.CanSetLazyLoadingEnabled(
+                ((IReadOnlyNavigation)oldNavigation).LazyLoadingEnabled, oldLazyLoadingEnabledConfigurationSource.Value))
         {
             builder = builder.EnableLazyLoading(
                 ((IReadOnlyNavigation)oldNavigation).LazyLoadingEnabled, oldLazyLoadingEnabledConfigurationSource.Value)!;
@@ -2883,7 +2903,7 @@ public class InternalForeignKeyBuilder : AnnotatableBuilder<ForeignKey, Internal
                     dependentProperties = (oldNameDependentProperties ?? dependentProperties)!;
                     if (principalKey.Properties.Count == dependentProperties.Count)
                     {
-                        var detachedProperties = InternalEntityTypeBuilder.DetachProperties(dependentProperties)!;
+                        var detachedProperties = InternalTypeBaseBuilder.DetachProperties(dependentProperties)!;
                         dependentProperties = dependentEntityType.Builder.GetOrCreateProperties(
                             dependentProperties.Select(p => p.Name).ToList(),
                             ConfigurationSource.Convention,
@@ -2921,11 +2941,6 @@ public class InternalForeignKeyBuilder : AnnotatableBuilder<ForeignKey, Internal
                 ConfigurationSource.Convention)!;
         }
 
-        foreach (var removedForeignKey in removedForeignKeys)
-        {
-            Metadata.DeclaringEntityType.Model.ConventionDispatcher.Tracker.Update(removedForeignKey, newRelationshipBuilder.Metadata);
-        }
-
         if (tempIndex?.IsInModel == true)
         {
             dependentEntityType.RemoveIndex(tempIndex.Properties);
@@ -2934,6 +2949,16 @@ public class InternalForeignKeyBuilder : AnnotatableBuilder<ForeignKey, Internal
         if (keyTempIndex?.IsInModel == true)
         {
             keyTempIndex.DeclaringEntityType.RemoveIndex(keyTempIndex.Properties);
+        }
+
+        if (newRelationshipBuilder == null)
+        {
+            return null;
+        }
+
+        foreach (var removedForeignKey in removedForeignKeys)
+        {
+            Metadata.DeclaringEntityType.Model.ConventionDispatcher.Tracker.Update(removedForeignKey, newRelationshipBuilder.Metadata);
         }
 
         return newRelationshipBuilder;
@@ -3170,6 +3195,18 @@ public class InternalForeignKeyBuilder : AnnotatableBuilder<ForeignKey, Internal
                 .Select(r => r.Builder));
         foreach (var candidateRelationship in candidates)
         {
+            var candidateFk = candidateRelationship.Metadata;
+            if (principalEndConfigurationSource.OverridesStrictly(
+                    candidateFk.GetDependentToPrincipalConfigurationSource())
+                && (principalEntityType != candidateFk.PrincipalEntityType
+                    || dependentEntityType != candidateFk.DeclaringEntityType)
+                && (principalEntityType.IsAssignableFrom(dependentEntityType)
+                    || dependentEntityType.IsAssignableFrom(principalEntityType)))
+            {
+                // Favor the intra-hierarchical relationship with higher configuration source
+                continue;
+            }
+
             if (!candidateRelationship.CanSetRelatedTypes(
                     principalEntityType,
                     dependentEntityType,
@@ -3192,26 +3229,26 @@ public class InternalForeignKeyBuilder : AnnotatableBuilder<ForeignKey, Internal
             if (configurationSource != ConfigurationSource.Explicit
                 && (shouldResetToPrincipal || shouldResetToDependent)
                 && (navigationToPrincipal?.Name is null || navigationToDependent?.Name is null)
-                && candidateRelationship.Metadata is { DependentToPrincipal: not null, PrincipalToDependent: not null }
+                && candidateFk is { DependentToPrincipal: not null, PrincipalToDependent: not null }
                 && ((!candidateRelationshipInverted
-                        && principalEntityType.IsAssignableFrom(candidateRelationship.Metadata.PrincipalEntityType)
-                        && dependentEntityType.IsAssignableFrom(candidateRelationship.Metadata.DeclaringEntityType))
+                        && principalEntityType.IsAssignableFrom(candidateFk.PrincipalEntityType)
+                        && dependentEntityType.IsAssignableFrom(candidateFk.DeclaringEntityType))
                     || (candidateRelationshipInverted
-                        && principalEntityType.IsAssignableFrom(candidateRelationship.Metadata.DeclaringEntityType)
-                        && dependentEntityType.IsAssignableFrom(candidateRelationship.Metadata.PrincipalEntityType))))
+                        && principalEntityType.IsAssignableFrom(candidateFk.DeclaringEntityType)
+                        && dependentEntityType.IsAssignableFrom(candidateFk.PrincipalEntityType))))
             {
                 // Favor derived bi-directional relationships over one-directional on base
                 continue;
             }
 
             if (dependentProperties != null
-                && !Property.AreCompatible(dependentProperties, candidateRelationship.Metadata.DeclaringEntityType))
+                && !Property.AreCompatible(dependentProperties, candidateFk.DeclaringEntityType))
             {
                 continue;
             }
 
             if (principalProperties != null
-                && !Property.AreCompatible(principalProperties, candidateRelationship.Metadata.PrincipalEntityType))
+                && !Property.AreCompatible(principalProperties, candidateFk.PrincipalEntityType))
             {
                 continue;
             }
@@ -3653,7 +3690,11 @@ public class InternalForeignKeyBuilder : AnnotatableBuilder<ForeignKey, Internal
             && (((navigationToPrincipal != null)
                     && (navigationToPrincipal.Value.Name == Metadata.PrincipalToDependent?.Name))
                 || ((navigationToDependent != null)
-                    && (navigationToDependent.Value.Name == Metadata.DependentToPrincipal?.Name)));
+                    && (navigationToDependent.Value.Name == Metadata.DependentToPrincipal?.Name))
+                || ((navigationToPrincipal == null)
+                    && (navigationToDependent == null)
+                    && principalEntityType == Metadata.DeclaringEntityType
+                    && dependentEntityType == Metadata.PrincipalEntityType));
 
         var someAspectsFitNonInverted = false;
         if (!sameHierarchyInvertedNavigations

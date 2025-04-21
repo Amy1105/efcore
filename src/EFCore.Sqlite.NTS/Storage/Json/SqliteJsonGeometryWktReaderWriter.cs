@@ -15,6 +15,8 @@ public sealed class SqliteJsonGeometryWktReaderWriter : JsonValueReaderWriter<Ge
 {
     private static readonly WKTReader WktReader = new();
 
+    private static readonly PropertyInfo InstanceProperty = typeof(SqliteJsonGeometryWktReaderWriter).GetProperty(nameof(Instance))!;
+
     /// <summary>
     ///     The singleton instance of this stateless reader/writer.
     /// </summary>
@@ -25,10 +27,14 @@ public sealed class SqliteJsonGeometryWktReaderWriter : JsonValueReaderWriter<Ge
     }
 
     /// <inheritdoc />
-    public override Geometry FromJsonTyped(ref Utf8JsonReaderManager manager)
+    public override Geometry FromJsonTyped(ref Utf8JsonReaderManager manager, object? existingObject = null)
         => WktReader.Read(manager.CurrentReader.GetString());
 
     /// <inheritdoc />
     public override void ToJsonTyped(Utf8JsonWriter writer, Geometry value)
         => writer.WriteStringValue(value.ToText());
+
+    /// <inheritdoc />
+    public override Expression ConstructorExpression
+        => Expression.Property(null, InstanceProperty);
 }

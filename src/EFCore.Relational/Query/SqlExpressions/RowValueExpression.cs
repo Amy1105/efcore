@@ -15,8 +15,10 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 /// </summary>
 public class RowValueExpression : SqlExpression
 {
+    private static ConstructorInfo? _quotingConstructor;
+
     /// <summary>
-    /// The values of this row.
+    ///     The values of this row.
     /// </summary>
     public virtual IReadOnlyList<SqlExpression> Values { get; }
 
@@ -25,7 +27,7 @@ public class RowValueExpression : SqlExpression
     /// </summary>
     /// <param name="values">The values of this row.</param>
     public RowValueExpression(IReadOnlyList<SqlExpression> values)
-        : base(typeof(ValueTuple<object>), RowValueTypeMapping.Instance)
+        : base(typeof(ValueTuple<object>), RowValueTypeMapping.Default)
     {
         Check.NotEmpty(values, nameof(values));
 
@@ -47,6 +49,12 @@ public class RowValueExpression : SqlExpression
         => values.Count == Values.Count && values.Zip(Values, (x, y) => (x, y)).All(tup => tup.x == tup.y)
             ? this
             : new RowValueExpression(values);
+
+    /// <inheritdoc />
+    public override Expression Quote()
+        => New(
+            _quotingConstructor ??= typeof(RowValueExpression).GetConstructor([typeof(IReadOnlyList<SqlExpression>)])!,
+            NewArrayInit(typeof(SqlExpression), Values.Select(v => v.Quote())));
 
     /// <inheritdoc />
     protected override void Print(ExpressionPrinter expressionPrinter)
@@ -109,7 +117,7 @@ public class RowValueExpression : SqlExpression
 
     private sealed class RowValueTypeMapping : RelationalTypeMapping
     {
-        public static RowValueTypeMapping Instance = new(typeof(ValueTuple<object>));
+        public static RowValueTypeMapping Default { get; } = new(typeof(ValueTuple<object>));
 
         private RowValueTypeMapping(Type clrType)
             : base("", clrType)

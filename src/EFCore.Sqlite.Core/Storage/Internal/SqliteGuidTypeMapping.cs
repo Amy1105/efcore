@@ -2,7 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Data;
-using Microsoft.EntityFrameworkCore.Storage.Json;
+using Microsoft.EntityFrameworkCore.Sqlite.Storage.Json.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Sqlite.Storage.Internal;
 
@@ -20,6 +20,14 @@ public class SqliteGuidTypeMapping : GuidTypeMapping
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    public static new SqliteGuidTypeMapping Default { get; } = new(SqliteTypeMappingSource.TextTypeName);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
     public SqliteGuidTypeMapping(
         string storeType,
         DbType? dbType = System.Data.DbType.Guid)
@@ -27,7 +35,7 @@ public class SqliteGuidTypeMapping : GuidTypeMapping
             new RelationalTypeMappingParameters(
                 new CoreTypeMappingParameters(
                     typeof(Guid),
-                    jsonValueReaderWriter: JsonGuidReaderWriter.Instance),
+                    jsonValueReaderWriter: SqliteJsonGuidReaderWriter.Instance),
                 storeType,
                 dbType: dbType))
     {

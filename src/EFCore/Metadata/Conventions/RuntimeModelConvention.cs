@@ -20,18 +20,16 @@ public class RuntimeModelConvention : IModelFinalizedConvention
     /// <param name="dependencies">Parameter object containing dependencies for this convention.</param>
     public RuntimeModelConvention(
         ProviderConventionSetBuilderDependencies dependencies)
-    {
-        Dependencies = dependencies;
-    }
+        => Dependencies = dependencies;
 
     /// <summary>
     ///     Dependencies for this service.
     /// </summary>
     protected virtual ProviderConventionSetBuilderDependencies Dependencies { get; }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public virtual IModel ProcessModelFinalized(IModel model)
-        => Create(model);
+        => Create(model).FinalizeModel();
 
     /// <summary>
     ///     Creates an optimized model base on the supplied one.
@@ -40,8 +38,11 @@ public class RuntimeModelConvention : IModelFinalizedConvention
     /// <returns>An optimized model.</returns>
     protected virtual RuntimeModel Create(IModel model)
     {
-        var runtimeModel = new RuntimeModel();
-        runtimeModel.SetSkipDetectChanges(((IRuntimeModel)model).SkipDetectChanges);
+        var runtimeModel = new RuntimeModel(
+            skipDetectChanges: ((IRuntimeModel)model).SkipDetectChanges,
+            modelId: model.ModelId,
+            entityTypeCount: model.GetEntityTypes().Count(),
+            typeConfigurationCount: model.GetTypeMappingConfigurations().Count());
         ((IModel)runtimeModel).ModelDependencies = model.ModelDependencies!;
 
         var entityTypes = model.GetEntityTypesInHierarchicalOrder();
@@ -58,6 +59,16 @@ public class RuntimeModelConvention : IModelFinalizedConvention
                 CreateAnnotations(
                     property, runtimeProperty, static (convention, annotations, source, target, runtime) =>
                         convention.ProcessPropertyAnnotations(annotations, source, target, runtime));
+
+                var elementType = property.GetElementType();
+                if (elementType != null)
+                {
+                    Check.DebugAssert(property.IsPrimitiveCollection, $"{property.Name} has an element type, but it's not a primitive collection.");
+                    var runtimeElementType = Create(runtimeProperty, elementType);
+                    CreateAnnotations(
+                        elementType, runtimeElementType, static (convention, annotations, source, target, runtime) =>
+                            convention.ProcessElementTypeAnnotations(annotations, source, target, runtime));
+                }
             }
 
             foreach (var serviceProperty in entityType.GetDeclaredServiceProperties())
@@ -185,7 +196,7 @@ public class RuntimeModelConvention : IModelFinalizedConvention
         TTarget target,
         Action<RuntimeModelConvention, Dictionary<string, object?>, TSource, TTarget, bool> process)
         where TSource : IAnnotatable
-        where TTarget : AnnotatableBase
+        where TTarget : RuntimeAnnotatableBase
     {
         var annotations = source.GetAnnotations().ToDictionary(a => a.Name, a => a.Value);
         process(this, annotations, source, target, false);
@@ -234,11 +245,22 @@ public class RuntimeModelConvention : IModelFinalizedConvention
             entityType.ClrType,
             entityType.BaseType == null ? null : model.FindEntityType(entityType.BaseType.Name)!,
             entityType.HasSharedClrType,
-            entityType.GetDiscriminatorPropertyName(),
             entityType.GetChangeTrackingStrategy(),
             entityType.FindIndexerPropertyInfo(),
             entityType.IsPropertyBag,
-            entityType.GetDiscriminatorValue());
+            entityType.GetDiscriminatorPropertyName(),
+            entityType.GetDiscriminatorValue(),
+            derivedTypesCount: entityType.GetDirectlyDerivedTypes().Count(),
+            propertyCount: entityType.GetDeclaredProperties().Count(),
+            complexPropertyCount: entityType.GetDeclaredComplexProperties().Count(),
+            navigationCount: entityType.GetDeclaredNavigations().Count(),
+            skipNavigationCount: entityType.GetDeclaredSkipNavigations().Count(),
+            servicePropertyCount: entityType.GetDeclaredServiceProperties().Count(),
+            foreignKeyCount: entityType.GetDeclaredForeignKeys().Count(),
+            unnamedIndexCount: entityType.GetDeclaredIndexes().Count(i => i.Name == null),
+            namedIndexCount: entityType.GetDeclaredProperties().Count(i => i.Name != null),
+            keyCount: entityType.GetDeclaredKeys().Count(),
+            triggerCount: entityType.GetDeclaredTriggers().Count());
 
     private static ParameterBinding Create(ParameterBinding parameterBinding, RuntimeEntityType entityType)
         => parameterBinding.With(
@@ -271,9 +293,6 @@ public class RuntimeModelConvention : IModelFinalizedConvention
             {
                 if (CoreAnnotationNames.AllNames.Contains(key)
                     && key != CoreAnnotationNames.QueryFilter
-#pragma warning disable CS0612 // Type or member is obsolete
-                    && key != CoreAnnotationNames.DefiningQuery
-#pragma warning restore CS0612 // Type or member is obsolete
                     && key != CoreAnnotationNames.DiscriminatorMappingComplete)
                 {
                     annotations.Remove(key);
@@ -284,14 +303,6 @@ public class RuntimeModelConvention : IModelFinalizedConvention
             {
                 annotations[CoreAnnotationNames.QueryFilter] =
                     new QueryRootRewritingExpressionVisitor(runtimeEntityType.Model).Rewrite((Expression)queryFilter!);
-            }
-
-#pragma warning disable CS0612 // Type or member is obsolete
-            if (annotations.TryGetValue(CoreAnnotationNames.DefiningQuery, out var definingQuery))
-            {
-                annotations[CoreAnnotationNames.DefiningQuery] =
-#pragma warning restore CS0612 // Type or member is obsolete
-                    new QueryRootRewritingExpressionVisitor(runtimeEntityType.Model).Rewrite((Expression)definingQuery!);
             }
         }
     }
@@ -343,51 +354,65 @@ public class RuntimeModelConvention : IModelFinalizedConvention
             ? runtimeEntityType.AddProperty(
                 property.Name,
                 property.ClrType,
-                property.Sentinel,
                 property.PropertyInfo,
                 property.FieldInfo,
                 property.GetPropertyAccessMode(),
-                property.IsNullable,
-                property.IsConcurrencyToken,
-                property.ValueGenerated,
-                property.GetBeforeSaveBehavior(),
-                property.GetAfterSaveBehavior(),
-                property.GetMaxLength(),
-                property.IsUnicode(),
-                property.GetPrecision(),
-                property.GetScale(),
-                property.GetProviderClrType(),
-                property.GetValueGeneratorFactory(),
-                property.GetValueConverter(),
-                property.GetValueComparer(),
-                property.GetKeyValueComparer(),
-                property.GetProviderValueComparer(),
-                property.GetJsonValueReaderWriter(),
-                property.GetTypeMapping())
+                nullable: property.IsNullable,
+                concurrencyToken: property.IsConcurrencyToken,
+                valueGenerated: property.ValueGenerated,
+                beforeSaveBehavior: property.GetBeforeSaveBehavior(),
+                afterSaveBehavior: property.GetAfterSaveBehavior(),
+                maxLength: property.GetMaxLength(),
+                unicode: property.IsUnicode(),
+                precision: property.GetPrecision(),
+                scale: property.GetScale(),
+                providerPropertyType: property.GetProviderClrType(),
+                valueGeneratorFactory: property.GetValueGeneratorFactory(),
+                valueConverter: property.GetValueConverter(),
+                valueComparer: property.GetValueComparer(),
+                keyValueComparer: property.GetKeyValueComparer(),
+                providerValueComparer: property.GetProviderValueComparer(),
+                jsonValueReaderWriter: property.GetJsonValueReaderWriter(),
+                typeMapping: property.GetTypeMapping(),
+                sentinel: property.Sentinel)
             : ((RuntimeComplexType)runtimeType).AddProperty(
                 property.Name,
                 property.ClrType,
-                property.Sentinel,
                 property.PropertyInfo,
                 property.FieldInfo,
                 property.GetPropertyAccessMode(),
-                property.IsNullable,
-                property.IsConcurrencyToken,
-                property.ValueGenerated,
-                property.GetBeforeSaveBehavior(),
-                property.GetAfterSaveBehavior(),
-                property.GetMaxLength(),
-                property.IsUnicode(),
-                property.GetPrecision(),
-                property.GetScale(),
-                property.GetProviderClrType(),
-                property.GetValueGeneratorFactory(),
-                property.GetValueConverter(),
-                property.GetValueComparer(),
-                property.GetKeyValueComparer(),
-                property.GetProviderValueComparer(),
-                property.GetJsonValueReaderWriter(),
-                property.GetTypeMapping());
+                nullable: property.IsNullable,
+                concurrencyToken: property.IsConcurrencyToken,
+                valueGenerated: property.ValueGenerated,
+                beforeSaveBehavior: property.GetBeforeSaveBehavior(),
+                afterSaveBehavior: property.GetAfterSaveBehavior(),
+                maxLength: property.GetMaxLength(),
+                unicode: property.IsUnicode(),
+                precision: property.GetPrecision(),
+                scale: property.GetScale(),
+                providerPropertyType: property.GetProviderClrType(),
+                valueGeneratorFactory: property.GetValueGeneratorFactory(),
+                valueConverter: property.GetValueConverter(),
+                valueComparer: property.GetValueComparer(),
+                keyValueComparer: property.GetKeyValueComparer(),
+                providerValueComparer: property.GetProviderValueComparer(),
+                jsonValueReaderWriter: property.GetJsonValueReaderWriter(),
+                typeMapping: property.GetTypeMapping(),
+                sentinel: property.Sentinel);
+
+    private static RuntimeElementType Create(RuntimeProperty runtimeProperty, IElementType element)
+        => runtimeProperty.SetElementType(
+            element.ClrType,
+            element.IsNullable,
+            element.GetMaxLength(),
+            element.IsUnicode(),
+            element.GetPrecision(),
+            element.GetScale(),
+            element.GetProviderClrType(),
+            element.GetValueConverter(),
+            element.GetValueComparer(),
+            element.GetJsonValueReaderWriter(),
+            element.GetTypeMapping());
 
     /// <summary>
     ///     Updates the property annotations that will be set on the read-only object.
@@ -400,6 +425,31 @@ public class RuntimeModelConvention : IModelFinalizedConvention
         Dictionary<string, object?> annotations,
         IProperty property,
         RuntimeProperty runtimeProperty,
+        bool runtime)
+    {
+        if (!runtime)
+        {
+            foreach (var (key, _) in annotations)
+            {
+                if (CoreAnnotationNames.AllNames.Contains(key))
+                {
+                    annotations.Remove(key);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Updates the element type annotations that will be set on the read-only object.
+    /// </summary>
+    /// <param name="annotations">The annotations to be processed.</param>
+    /// <param name="element">The source element type.</param>
+    /// <param name="runtimeElement">The target element type that will contain the annotations.</param>
+    /// <param name="runtime">Indicates whether the given annotations are runtime annotations.</param>
+    protected virtual void ProcessElementTypeAnnotations(
+        Dictionary<string, object?> annotations,
+        IElementType element,
+        RuntimeElementType runtimeElement,
         bool runtime)
     {
         if (!runtime)
@@ -447,23 +497,27 @@ public class RuntimeModelConvention : IModelFinalizedConvention
         }
     }
 
-    private RuntimeComplexProperty Create(IComplexProperty complexProperty, RuntimeEntityType runtimeEntityType)
+    private RuntimeComplexProperty Create(IComplexProperty complexProperty, RuntimeTypeBase runtimeStructuralType)
     {
-        var runtimeComplexProperty = runtimeEntityType.AddComplexProperty(
-                complexProperty.Name,
-                complexProperty.ClrType,
-                complexProperty.ComplexType.Name,
-                complexProperty.ComplexType.ClrType,
-                complexProperty.PropertyInfo,
-                complexProperty.FieldInfo,
-                complexProperty.GetPropertyAccessMode(),
-                complexProperty.IsNullable,
-                complexProperty.IsCollection,
-                complexProperty.ComplexType.GetChangeTrackingStrategy(),
-                complexProperty.ComplexType.FindIndexerPropertyInfo(),
-                complexProperty.ComplexType.IsPropertyBag);
-
         var complexType = complexProperty.ComplexType;
+        var runtimeComplexProperty = runtimeStructuralType.AddComplexProperty(
+            complexProperty.Name,
+            complexProperty.ClrType,
+            complexType.Name,
+            complexType.ClrType,
+            complexProperty.PropertyInfo,
+            complexProperty.FieldInfo,
+            complexProperty.GetPropertyAccessMode(),
+            complexProperty.IsNullable,
+            complexProperty.IsCollection,
+            complexType.GetChangeTrackingStrategy(),
+            complexType.FindIndexerPropertyInfo(),
+            complexType.IsPropertyBag,
+            complexType.GetDiscriminatorPropertyName(),
+            complexType.GetDiscriminatorValue(),
+            propertyCount: complexType.GetDeclaredProperties().Count(),
+            complexPropertyCount: complexType.GetDeclaredComplexProperties().Count());
+
         var runtimeComplexType = runtimeComplexProperty.ComplexType;
 
         foreach (var property in complexType.GetProperties())
@@ -472,6 +526,16 @@ public class RuntimeModelConvention : IModelFinalizedConvention
             CreateAnnotations(
                 property, runtimeProperty, static (convention, annotations, source, target, runtime) =>
                     convention.ProcessPropertyAnnotations(annotations, source, target, runtime));
+
+            var elementType = property.GetElementType();
+            if (elementType != null)
+            {
+                Check.DebugAssert(property.IsPrimitiveCollection, $"{property.Name} has an element type, but it's not a primitive collection.");
+                var runtimeElementType = Create(runtimeProperty, elementType);
+                CreateAnnotations(
+                    elementType, runtimeElementType, static (convention, annotations, source, target, runtime) =>
+                        convention.ProcessElementTypeAnnotations(annotations, source, target, runtime));
+            }
         }
 
         foreach (var property in complexType.GetComplexProperties())
@@ -482,44 +546,9 @@ public class RuntimeModelConvention : IModelFinalizedConvention
                     convention.ProcessComplexPropertyAnnotations(annotations, source, target, runtime));
         }
 
-        return runtimeComplexProperty;
-    }
-
-    private RuntimeComplexProperty Create(IComplexProperty complexProperty, RuntimeComplexType runtimeComplexType)
-    {
-        var runtimeComplexProperty = runtimeComplexType.AddComplexProperty(
-                complexProperty.Name,
-                complexProperty.ClrType,
-                complexProperty.ComplexType.Name,
-                complexProperty.ComplexType.ClrType,
-                complexProperty.PropertyInfo,
-                complexProperty.FieldInfo,
-                complexProperty.GetPropertyAccessMode(),
-                complexProperty.IsNullable,
-                complexProperty.IsCollection,
-                complexProperty.ComplexType.GetChangeTrackingStrategy(),
-                complexProperty.ComplexType.FindIndexerPropertyInfo(),
-                complexProperty.ComplexType.IsPropertyBag);
-
-        var complexType = complexProperty.ComplexType;
-        var newRuntimeComplexType = runtimeComplexProperty.ComplexType;
-
-        foreach (var property in complexType.GetProperties())
-        {
-            var runtimeProperty = Create(property, newRuntimeComplexType);
-            CreateAnnotations(
-                property, runtimeProperty, static (convention, annotations, source, target, runtime) =>
-                    convention.ProcessPropertyAnnotations(annotations, source, target, runtime));
-        }
-
-        foreach (var property in complexType.GetComplexProperties())
-        {
-            var runtimeProperty = Create(property, newRuntimeComplexType);
-            CreateAnnotations(
-                property, runtimeProperty, static (convention, annotations, source, target, runtime) =>
-                    convention.ProcessComplexPropertyAnnotations(annotations, source, target, runtime));
-        }
-
+        CreateAnnotations(
+            complexType, runtimeComplexType, static (convention, annotations, source, target, runtime) =>
+                convention.ProcessComplexTypeAnnotations(annotations, source, target, runtime));
         return runtimeComplexProperty;
     }
 
@@ -534,6 +563,31 @@ public class RuntimeModelConvention : IModelFinalizedConvention
         Dictionary<string, object?> annotations,
         IComplexProperty property,
         RuntimeComplexProperty runtimeProperty,
+        bool runtime)
+    {
+        if (!runtime)
+        {
+            foreach (var (key, _) in annotations)
+            {
+                if (CoreAnnotationNames.AllNames.Contains(key))
+                {
+                    annotations.Remove(key);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Updates the complex type annotations that will be set on the read-only object.
+    /// </summary>
+    /// <param name="annotations">The annotations to be processed.</param>
+    /// <param name="complexType">The source complex type.</param>
+    /// <param name="runtimeComplexType">The target complex type that will contain the annotations.</param>
+    /// <param name="runtime">Indicates whether the given annotations are runtime annotations.</param>
+    protected virtual void ProcessComplexTypeAnnotations(
+        Dictionary<string, object?> annotations,
+        IComplexType complexType,
+        RuntimeComplexType runtimeComplexType,
         bool runtime)
     {
         if (!runtime)
@@ -798,9 +852,7 @@ public class RuntimeModelConvention : IModelFinalizedConvention
         /// </summary>
         /// <param name="model">The model to look for entity types.</param>
         public QueryRootRewritingExpressionVisitor(IModel model)
-        {
-            _model = model;
-        }
+            => _model = model;
 
         /// <summary>
         ///     Rewrites <see cref="EntityQueryRootExpression" /> encountered in an expression to use a different entity type.

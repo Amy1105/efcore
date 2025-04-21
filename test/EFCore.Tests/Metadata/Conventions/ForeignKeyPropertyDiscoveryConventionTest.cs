@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using Microsoft.EntityFrameworkCore.Diagnostics.Internal;
+using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
@@ -383,10 +384,10 @@ public class ForeignKeyPropertyDiscoveryConventionTest
     public void Does_not_match_PK_name_properties_if_subset_of_dependent_PK_and_contains_id()
     {
         var dependentTypeBuilder = DependentTypeWithCompositeKey.Builder;
-        var pkProperty1 = (Property)dependentTypeBuilder.Property(
+        var pkProperty1 = dependentTypeBuilder.Property(
                 DependentEntityWithCompositeKey.IdProperty, ConfigurationSource.Convention)
             .Metadata;
-        var pkProperty2 = (Property)dependentTypeBuilder.Property(
+        var pkProperty2 = dependentTypeBuilder.Property(
                 DependentEntityWithCompositeKey.NameProperty, ConfigurationSource.Convention)
             .IsRequired(true, ConfigurationSource.Convention)
             .Metadata;
@@ -418,7 +419,7 @@ public class ForeignKeyPropertyDiscoveryConventionTest
     public void Matches_PK_name_properties_if_subset_of_dependent_PK()
     {
         var dependentTypeBuilder = DependentType.Builder;
-        var pkProperty = (Property)dependentTypeBuilder.Property(
+        var pkProperty = dependentTypeBuilder.Property(
                 DependentEntity.IDProperty, ConfigurationSource.Convention)
             .IsRequired(true, ConfigurationSource.Convention)
             .Metadata;
@@ -1219,9 +1220,7 @@ public class ForeignKeyPropertyDiscoveryConventionTest
         public PrincipalEntity SelfRef { get; set; }
     }
 
-    private class DerivedPrincipalEntity : PrincipalEntity
-    {
-    }
+    private class DerivedPrincipalEntity : PrincipalEntity;
 
     private class DependentEntity
     {

@@ -3,17 +3,13 @@
 
 namespace Microsoft.EntityFrameworkCore.BulkUpdates;
 
-public class TPCInheritanceBulkUpdatesSqlServerTest : TPCInheritanceBulkUpdatesTestBase<TPCInheritanceBulkUpdatesSqlServerFixture>
-{
-    public TPCInheritanceBulkUpdatesSqlServerTest(
-        TPCInheritanceBulkUpdatesSqlServerFixture fixture,
-        ITestOutputHelper testOutputHelper)
-        : base(fixture)
-    {
-        ClearLog();
-        Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
-    }
+#nullable disable
 
+public class TPCInheritanceBulkUpdatesSqlServerTest(
+    TPCInheritanceBulkUpdatesSqlServerFixture fixture,
+    ITestOutputHelper testOutputHelper)
+    : TPCInheritanceBulkUpdatesTestBase<TPCInheritanceBulkUpdatesSqlServerFixture>(fixture, testOutputHelper)
+{
     [ConditionalFact]
     public virtual void Check_all_tests_overridden()
         => TestHelpers.AssertAllMethodsOverridden(GetType());
@@ -30,7 +26,7 @@ public class TPCInheritanceBulkUpdatesSqlServerTest : TPCInheritanceBulkUpdatesT
         await base.Delete_where_hierarchy_derived(async);
 
         AssertSql(
-"""
+            """
 DELETE FROM [k]
 FROM [Kiwi] AS [k]
 WHERE [k].[Name] = N'Great spotted kiwi'
@@ -42,19 +38,19 @@ WHERE [k].[Name] = N'Great spotted kiwi'
         await base.Delete_where_using_hierarchy(async);
 
         AssertSql(
-"""
+            """
 DELETE FROM [c]
 FROM [Countries] AS [c]
 WHERE (
     SELECT COUNT(*)
     FROM (
-        SELECT [e].[Id], [e].[CountryId], [e].[Name], [e].[Species], [e].[EagleId], [e].[IsFlightless], [e].[Group], NULL AS [FoundOn], N'Eagle' AS [Discriminator]
+        SELECT [e].[CountryId]
         FROM [Eagle] AS [e]
         UNION ALL
-        SELECT [k].[Id], [k].[CountryId], [k].[Name], [k].[Species], [k].[EagleId], [k].[IsFlightless], NULL AS [Group], [k].[FoundOn], N'Kiwi' AS [Discriminator]
+        SELECT [k].[CountryId]
         FROM [Kiwi] AS [k]
-    ) AS [t]
-    WHERE [c].[Id] = [t].[CountryId] AND [t].[CountryId] > 0) > 0
+    ) AS [u]
+    WHERE [c].[Id] = [u].[CountryId] AND [u].[CountryId] > 0) > 0
 """);
     }
 
@@ -63,16 +59,16 @@ WHERE (
         await base.Delete_where_using_hierarchy_derived(async);
 
         AssertSql(
-"""
+            """
 DELETE FROM [c]
 FROM [Countries] AS [c]
 WHERE (
     SELECT COUNT(*)
     FROM (
-        SELECT [k].[Id], [k].[CountryId], [k].[Name], [k].[Species], [k].[EagleId], [k].[IsFlightless], NULL AS [Group], [k].[FoundOn], N'Kiwi' AS [Discriminator]
+        SELECT [k].[CountryId]
         FROM [Kiwi] AS [k]
-    ) AS [t]
-    WHERE [c].[Id] = [t].[CountryId] AND [t].[CountryId] > 0) > 0
+    ) AS [u]
+    WHERE [c].[Id] = [u].[CountryId] AND [u].[CountryId] > 0) > 0
 """);
     }
 
@@ -111,9 +107,16 @@ WHERE (
         AssertSql();
     }
 
-    public override async Task Update_where_hierarchy(bool async)
+    public override async Task Update_base_type(bool async)
     {
-        await base.Update_where_hierarchy(async);
+        await base.Update_base_type(async);
+
+        AssertExecuteUpdateSql();
+    }
+
+    public override async Task Update_base_type_with_OfType(bool async)
+    {
+        await base.Update_base_type_with_OfType(async);
 
         AssertExecuteUpdateSql();
     }
@@ -125,16 +128,31 @@ WHERE (
         AssertExecuteUpdateSql();
     }
 
-    public override async Task Update_where_hierarchy_derived(bool async)
+    public override async Task Update_base_property_on_derived_type(bool async)
     {
-        await base.Update_where_hierarchy_derived(async);
+        await base.Update_base_property_on_derived_type(async);
 
         AssertExecuteUpdateSql(
-"""
+            """
+@p='SomeOtherKiwi' (Size = 4000)
+
 UPDATE [k]
-SET [k].[Name] = N'Kiwi'
+SET [k].[Name] = @p
 FROM [Kiwi] AS [k]
-WHERE [k].[Name] = N'Great spotted kiwi'
+""");
+    }
+
+    public override async Task Update_derived_property_on_derived_type(bool async)
+    {
+        await base.Update_derived_property_on_derived_type(async);
+
+        AssertExecuteUpdateSql(
+            """
+@p='0' (Size = 1)
+
+UPDATE [k]
+SET [k].[FoundOn] = @p
+FROM [Kiwi] AS [k]
 """);
     }
 
@@ -143,20 +161,38 @@ WHERE [k].[Name] = N'Great spotted kiwi'
         await base.Update_where_using_hierarchy(async);
 
         AssertExecuteUpdateSql(
-"""
+            """
+@p='Monovia' (Size = 4000)
+
 UPDATE [c]
-SET [c].[Name] = N'Monovia'
+SET [c].[Name] = @p
 FROM [Countries] AS [c]
 WHERE (
     SELECT COUNT(*)
     FROM (
-        SELECT [e].[Id], [e].[CountryId], [e].[Name], [e].[Species], [e].[EagleId], [e].[IsFlightless], [e].[Group], NULL AS [FoundOn], N'Eagle' AS [Discriminator]
+        SELECT [e].[CountryId]
         FROM [Eagle] AS [e]
         UNION ALL
-        SELECT [k].[Id], [k].[CountryId], [k].[Name], [k].[Species], [k].[EagleId], [k].[IsFlightless], NULL AS [Group], [k].[FoundOn], N'Kiwi' AS [Discriminator]
+        SELECT [k].[CountryId]
         FROM [Kiwi] AS [k]
-    ) AS [t]
-    WHERE [c].[Id] = [t].[CountryId] AND [t].[CountryId] > 0) > 0
+    ) AS [u]
+    WHERE [c].[Id] = [u].[CountryId] AND [u].[CountryId] > 0) > 0
+""");
+    }
+
+    public override async Task Update_base_and_derived_types(bool async)
+    {
+        await base.Update_base_and_derived_types(async);
+
+        AssertExecuteUpdateSql(
+            """
+@p='Kiwi' (Size = 4000)
+@p0='0' (Size = 1)
+
+UPDATE [k]
+SET [k].[Name] = @p,
+    [k].[FoundOn] = @p0
+FROM [Kiwi] AS [k]
 """);
     }
 
@@ -165,17 +201,19 @@ WHERE (
         await base.Update_where_using_hierarchy_derived(async);
 
         AssertExecuteUpdateSql(
-"""
+            """
+@p='Monovia' (Size = 4000)
+
 UPDATE [c]
-SET [c].[Name] = N'Monovia'
+SET [c].[Name] = @p
 FROM [Countries] AS [c]
 WHERE (
     SELECT COUNT(*)
     FROM (
-        SELECT [k].[Id], [k].[CountryId], [k].[Name], [k].[Species], [k].[EagleId], [k].[IsFlightless], NULL AS [Group], [k].[FoundOn], N'Kiwi' AS [Discriminator]
+        SELECT [k].[CountryId]
         FROM [Kiwi] AS [k]
-    ) AS [t]
-    WHERE [c].[Id] = [t].[CountryId] AND [t].[CountryId] > 0) > 0
+    ) AS [u]
+    WHERE [c].[Id] = [u].[CountryId] AND [u].[CountryId] > 0) > 0
 """);
     }
 
@@ -184,9 +222,11 @@ WHERE (
         await base.Update_with_interface_in_property_expression(async);
 
         AssertExecuteUpdateSql(
-"""
+            """
+@p='0'
+
 UPDATE [c]
-SET [c].[SugarGrams] = 0
+SET [c].[SugarGrams] = @p
 FROM [Coke] AS [c]
 """);
     }
@@ -196,9 +236,11 @@ FROM [Coke] AS [c]
         await base.Update_with_interface_in_EF_Property_in_property_expression(async);
 
         AssertExecuteUpdateSql(
-"""
+            """
+@p='0'
+
 UPDATE [c]
-SET [c].[SugarGrams] = 0
+SET [c].[SugarGrams] = @p
 FROM [Coke] AS [c]
 """);
     }

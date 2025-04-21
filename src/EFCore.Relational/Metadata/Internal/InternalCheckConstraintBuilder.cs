@@ -98,7 +98,7 @@ public class InternalCheckConstraintBuilder :
                     return null;
                 }
 
-                checkConstraintsToBeDetached ??= new List<IConventionCheckConstraint>();
+                checkConstraintsToBeDetached ??= [];
 
                 checkConstraintsToBeDetached.Add(derivedCheckConstraint);
             }
@@ -107,7 +107,7 @@ public class InternalCheckConstraintBuilder :
         List<IConventionCheckConstraint>? detachedCheckConstraints = null;
         if (checkConstraintsToBeDetached != null)
         {
-            detachedCheckConstraints = new List<IConventionCheckConstraint>();
+            detachedCheckConstraints = [];
             foreach (var checkConstraintToBeDetached in checkConstraintsToBeDetached)
             {
                 detachedCheckConstraints.Add(
@@ -182,7 +182,10 @@ public class InternalCheckConstraintBuilder :
 
     /// <inheritdoc />
     [DebuggerStepThrough]
-    IConventionCheckConstraintBuilder? IConventionCheckConstraintBuilder.HasNonNullAnnotation(string name, object? value, bool fromDataAnnotation)
+    IConventionCheckConstraintBuilder? IConventionCheckConstraintBuilder.HasNonNullAnnotation(
+        string name,
+        object? value,
+        bool fromDataAnnotation)
         => (IConventionCheckConstraintBuilder?)base.HasNonNullAnnotation(
             name, value, fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
 

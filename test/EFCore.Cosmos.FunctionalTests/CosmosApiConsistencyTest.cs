@@ -3,15 +3,13 @@
 
 using Microsoft.EntityFrameworkCore.Cosmos.Storage.Internal;
 
-namespace Microsoft.EntityFrameworkCore.Cosmos;
+namespace Microsoft.EntityFrameworkCore;
 
-public class CosmosApiConsistencyTest : ApiConsistencyTestBase<CosmosApiConsistencyTest.CosmosApiConsistencyFixture>
+#nullable disable
+
+public class CosmosApiConsistencyTest(CosmosApiConsistencyTest.CosmosApiConsistencyFixture fixture)
+    : ApiConsistencyTestBase<CosmosApiConsistencyTest.CosmosApiConsistencyFixture>(fixture)
 {
-    public CosmosApiConsistencyTest(CosmosApiConsistencyFixture fixture)
-        : base(fixture)
-    {
-    }
-
     protected override void AddServices(ServiceCollection serviceCollection)
         => serviceCollection.AddEntityFrameworkCosmos();
 
@@ -20,14 +18,15 @@ public class CosmosApiConsistencyTest : ApiConsistencyTestBase<CosmosApiConsiste
 
     public class CosmosApiConsistencyFixture : ApiConsistencyFixtureBase
     {
-        public override HashSet<Type> FluentApiTypes { get; } = new()
-        {
+        public override HashSet<Type> FluentApiTypes { get; } =
+        [
+            typeof(CosmosPrimitiveCollectionBuilderExtensions),
             typeof(CosmosModelBuilderExtensions),
             typeof(CosmosPropertyBuilderExtensions),
             typeof(CosmosServiceCollectionExtensions),
             typeof(CosmosDbContextOptionsExtensions),
             typeof(CosmosDbContextOptionsBuilder)
-        };
+        ];
 
         public override
             Dictionary<Type, (Type ReadonlyExtensions,
@@ -35,12 +34,13 @@ public class CosmosApiConsistencyTest : ApiConsistencyTestBase<CosmosApiConsiste
                 Type ConventionExtensions,
                 Type ConventionBuilderExtensions,
                 Type RuntimeExtensions)> MetadataExtensionTypes
-        { get; }
+        {
+            get;
+        }
             = new()
             {
                 {
-                    typeof(IReadOnlyModel),
-                    (
+                    typeof(IReadOnlyModel), (
                         typeof(CosmosModelExtensions),
                         typeof(CosmosModelExtensions),
                         typeof(CosmosModelExtensions),
@@ -49,8 +49,7 @@ public class CosmosApiConsistencyTest : ApiConsistencyTestBase<CosmosApiConsiste
                     )
                 },
                 {
-                    typeof(IReadOnlyEntityType),
-                    (
+                    typeof(IReadOnlyEntityType), (
                         typeof(CosmosEntityTypeExtensions),
                         typeof(CosmosEntityTypeExtensions),
                         typeof(CosmosEntityTypeExtensions),
@@ -59,8 +58,7 @@ public class CosmosApiConsistencyTest : ApiConsistencyTestBase<CosmosApiConsiste
                     )
                 },
                 {
-                    typeof(IReadOnlyProperty),
-                    (
+                    typeof(IReadOnlyProperty), (
                         typeof(CosmosPropertyExtensions),
                         typeof(CosmosPropertyExtensions),
                         typeof(CosmosPropertyExtensions),

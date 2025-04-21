@@ -42,8 +42,8 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
     private readonly ConcurrentStack<Transaction> _ambientTransactions = new();
     private DbConnection? _connection;
     private readonly IRelationalCommandBuilder _relationalCommandBuilder;
+    private readonly IExceptionDetector _exceptionDetector;
     private IRelationalCommand? _cachedRelationalCommand;
-    private readonly Stopwatch _stopwatch = new();
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="RelationalConnection" /> class.
@@ -69,15 +69,14 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
             _connection = relationalOptions.Connection;
             _connectionOwned = relationalOptions.IsConnectionOwned;
 
-            if (_connectionString != null)
-            {
-                _connection.ConnectionString = _connectionString;
-            }
+            Check.DebugAssert(_connectionString == null, "ConnectionString is not null");
         }
         else
         {
             _connectionOwned = true;
         }
+
+        _exceptionDetector = dependencies.ExceptionDetector;
     }
 
     /// <summary>
@@ -153,7 +152,7 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
 
             if (logger.ShouldLogConnectionCreate(startTime))
             {
-                _stopwatch.Restart();
+                var stopwatch = SharedStopwatch.StartNew();
 
                 var interceptionResult = logger.ConnectionCreating(this, startTime);
 
@@ -161,7 +160,7 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
                     ? interceptionResult.Result
                     : CreateDbConnection();
 
-                _connection = logger.ConnectionCreated(this, startTime, _stopwatch.Elapsed);
+                _connection = logger.ConnectionCreated(this, startTime, stopwatch.Elapsed);
             }
             else
             {
@@ -170,10 +169,7 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
 
             return _connection;
         }
-        set
-        {
-            SetDbConnection(value, contextOwnsConnection: false);
-        }
+        set => SetDbConnection(value, contextOwnsConnection: false);
     }
 
     /// <inheritdoc />
@@ -340,7 +336,7 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
 
         var transactionId = Guid.NewGuid();
         var startTime = DateTimeOffset.UtcNow;
-        _stopwatch.Restart();
+        var stopwatch = SharedStopwatch.StartNew();
 
         var interceptionResult = Dependencies.TransactionLogger.TransactionStarting(
             this,
@@ -357,7 +353,7 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
             dbTransaction,
             transactionId,
             startTime,
-            _stopwatch.Elapsed);
+            stopwatch.Elapsed);
 
         return CreateRelationalTransaction(dbTransaction, transactionId, true);
     }
@@ -391,7 +387,7 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
 
         var transactionId = Guid.NewGuid();
         var startTime = DateTimeOffset.UtcNow;
-        _stopwatch.Restart();
+        var stopwatch = SharedStopwatch.StartNew();
 
         var interceptionResult = await Dependencies.TransactionLogger.TransactionStartingAsync(
                 this,
@@ -410,7 +406,7 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
                 dbTransaction,
                 transactionId,
                 startTime,
-                _stopwatch.Elapsed,
+                stopwatch.Elapsed,
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -479,7 +475,7 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
     ///     An instance of <see cref="IDbContextTransaction" /> that wraps the provided transaction, or <see langword="null" />
     ///     if <paramref name="transaction" /> is <see langword="null" />.
     /// </returns>
-    [return: NotNullIfNotNull("transaction")]
+    [return: NotNullIfNotNull(nameof(transaction))]
     public virtual IDbContextTransaction? UseTransaction(DbTransaction? transaction, Guid transactionId)
     {
         if (ShouldUseTransaction(transaction))
@@ -711,12 +707,12 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
         var logger = Dependencies.ConnectionLogger;
         var startTime = DateTimeOffset.UtcNow;
 
+        var stopwatch = SharedStopwatch.StartNew();
+
         try
         {
             if (logger.ShouldLogConnectionOpen(startTime))
             {
-                _stopwatch.Restart();
-
                 var interceptionResult = logger.ConnectionOpening(this, startTime);
 
                 if (!interceptionResult.IsSuppressed)
@@ -724,7 +720,7 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
                     OpenDbConnection(errorsExpected);
                 }
 
-                logger.ConnectionOpened(this, startTime, _stopwatch.Elapsed);
+                logger.ConnectionOpened(this, startTime, stopwatch.Elapsed);
             }
             else
             {
@@ -733,7 +729,14 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
         }
         catch (Exception e)
         {
-            logger.ConnectionError(this, e, startTime, _stopwatch.Elapsed, errorsExpected);
+            if (_exceptionDetector.IsCancellation(e, CancellationToken.None))
+            {
+                logger.ConnectionCanceled(this, startTime, stopwatch.Elapsed);
+            }
+            else
+            {
+                logger.ConnectionError(this, e, startTime, stopwatch.Elapsed, errorsExpected);
+            }
 
             throw;
         }
@@ -756,13 +759,12 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
     {
         var logger = Dependencies.ConnectionLogger;
         var startTime = DateTimeOffset.UtcNow;
+        var stopwatch = SharedStopwatch.StartNew();
 
         try
         {
             if (logger.ShouldLogConnectionOpen(startTime))
             {
-                _stopwatch.Restart();
-
                 var interceptionResult
                     = await logger.ConnectionOpeningAsync(this, startTime, cancellationToken).ConfigureAwait(false);
 
@@ -771,7 +773,8 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
                     await OpenDbConnectionAsync(errorsExpected, cancellationToken).ConfigureAwait(false);
                 }
 
-                await logger.ConnectionOpenedAsync(this, startTime, _stopwatch.Elapsed, cancellationToken).ConfigureAwait(false);
+                await logger.ConnectionOpenedAsync(this, startTime, stopwatch.Elapsed, cancellationToken)
+                    .ConfigureAwait(false);
             }
             else
             {
@@ -780,14 +783,16 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
         }
         catch (Exception e)
         {
-            await logger.ConnectionErrorAsync(
-                    this,
-                    e,
-                    startTime,
-                    DateTimeOffset.UtcNow - startTime,
-                    errorsExpected,
-                    cancellationToken)
-                .ConfigureAwait(false);
+            if (_exceptionDetector.IsCancellation(e, CancellationToken.None))
+            {
+                await logger.ConnectionCanceledAsync(this, startTime, stopwatch.Elapsed, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                await logger.ConnectionErrorAsync(this, e, startTime, stopwatch.Elapsed, errorsExpected, cancellationToken)
+                    .ConfigureAwait(false);
+            }
 
             throw;
         }
@@ -878,13 +883,12 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
             {
                 var logger = Dependencies.ConnectionLogger;
                 var startTime = DateTimeOffset.UtcNow;
+                var stopwatch = SharedStopwatch.StartNew();
 
                 try
                 {
                     if (logger.ShouldLogConnectionClose(startTime))
                     {
-                        _stopwatch.Restart();
-
                         var interceptionResult = logger.ConnectionClosing(this, startTime);
 
                         if (!interceptionResult.IsSuppressed)
@@ -892,7 +896,7 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
                             CloseDbConnection();
                         }
 
-                        logger.ConnectionClosed(this, startTime, _stopwatch.Elapsed);
+                        logger.ConnectionClosed(this, startTime, stopwatch.Elapsed);
                     }
                     else
                     {
@@ -903,7 +907,7 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
                 }
                 catch (Exception e)
                 {
-                    logger.ConnectionError(this, e, startTime, _stopwatch.Elapsed, false);
+                    logger.ConnectionError(this, e, startTime, stopwatch.Elapsed, false);
 
                     throw;
                 }
@@ -942,6 +946,8 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
 
             ClearTransactions(clearAmbient: false);
 
+            var stopwatch = SharedStopwatch.StartNew();
+
             if (DbConnection.State != ConnectionState.Closed)
             {
                 var logger = Dependencies.ConnectionLogger;
@@ -951,8 +957,6 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
                 {
                     if (logger.ShouldLogConnectionClose(startTime))
                     {
-                        _stopwatch.Restart();
-
                         var interceptionResult = await logger.ConnectionClosingAsync(this, startTime)
                             .ConfigureAwait(false);
 
@@ -961,8 +965,7 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
                             await CloseDbConnectionAsync().ConfigureAwait(false);
                         }
 
-                        await logger.ConnectionClosedAsync(this, startTime, _stopwatch.Elapsed)
-                            .ConfigureAwait(false);
+                        await logger.ConnectionClosedAsync(this, startTime, stopwatch.Elapsed).ConfigureAwait(false);
                     }
                     else
                     {
@@ -977,7 +980,7 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
                             this,
                             e,
                             startTime,
-                            DateTimeOffset.UtcNow - startTime,
+                            stopwatch.Elapsed,
                             false)
                         .ConfigureAwait(false);
 
@@ -1100,7 +1103,7 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
 
         if (logger.ShouldLogConnectionDispose(startTime))
         {
-            _stopwatch.Restart();
+            var stopwatch = SharedStopwatch.StartNew();
 
             var interceptionResult = logger.ConnectionDisposing(this, startTime);
 
@@ -1109,7 +1112,7 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
                 DbConnection.Dispose();
             }
 
-            logger.ConnectionDisposed(this, startTime, _stopwatch.Elapsed);
+            logger.ConnectionDisposed(this, startTime, stopwatch.Elapsed);
         }
         else
         {
@@ -1128,7 +1131,7 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
 
         if (logger.ShouldLogConnectionDispose(startTime))
         {
-            _stopwatch.Restart();
+            var stopwatch = SharedStopwatch.StartNew();
 
             var interceptionResult = await logger.ConnectionDisposingAsync(this, startTime).ConfigureAwait(false);
 
@@ -1137,7 +1140,7 @@ public abstract class RelationalConnection : IRelationalConnection, ITransaction
                 await DbConnection.DisposeAsync().ConfigureAwait(false);
             }
 
-            await logger.ConnectionDisposedAsync(this, startTime, _stopwatch.Elapsed).ConfigureAwait(false);
+            await logger.ConnectionDisposedAsync(this, startTime, stopwatch.Elapsed).ConfigureAwait(false);
         }
         else
         {

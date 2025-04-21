@@ -2,6 +2,9 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 // ReSharper disable once CheckNamespace
+
+using Microsoft.EntityFrameworkCore.Internal;
+
 namespace Microsoft.EntityFrameworkCore;
 
 /// <summary>
@@ -21,7 +24,7 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type to get the table name for.</param>
     /// <returns>The name of the table to which the type is mapped.</returns>
     public static string? GetTableName(this IReadOnlyTypeBase typeBase)
-        => typeBase.FundamentalEntityType.GetTableName();
+        => typeBase.ContainingEntityType.GetTableName();
 
     /// <summary>
     ///     Returns the database schema that contains the mapped table.
@@ -29,7 +32,7 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type to get the schema for.</param>
     /// <returns>The database schema that contains the mapped table.</returns>
     public static string? GetSchema(this IReadOnlyTypeBase typeBase)
-        => typeBase.FundamentalEntityType.GetSchema();
+        => typeBase.ContainingEntityType.GetSchema();
 
     /// <summary>
     ///     Returns the default mappings that the type would use.
@@ -37,9 +40,12 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type to get the table mappings for.</param>
     /// <returns>The tables to which the type is mapped.</returns>
     public static IEnumerable<ITableMappingBase> GetDefaultMappings(this ITypeBase typeBase)
-        => (IEnumerable<ITableMappingBase>?)typeBase.FindRuntimeAnnotationValue(
+    {
+        typeBase.Model.EnsureRelationalModel();
+        return (IEnumerable<ITableMappingBase>?)typeBase.FindRuntimeAnnotationValue(
                 RelationalAnnotationNames.DefaultMappings)
             ?? Enumerable.Empty<ITableMappingBase>();
+    }
 
     /// <summary>
     ///     Returns the tables to which the type is mapped.
@@ -47,9 +53,12 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type to get the table mappings for.</param>
     /// <returns>The tables to which the type is mapped.</returns>
     public static IEnumerable<ITableMapping> GetTableMappings(this ITypeBase typeBase)
-        => (IEnumerable<ITableMapping>?)typeBase.FindRuntimeAnnotationValue(
+    {
+        typeBase.Model.EnsureRelationalModel();
+        return (IEnumerable<ITableMapping>?)typeBase.FindRuntimeAnnotationValue(
                 RelationalAnnotationNames.TableMappings)
             ?? Enumerable.Empty<ITableMapping>();
+    }
 
     #endregion Table mapping
 
@@ -61,7 +70,7 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type to get the view name for.</param>
     /// <returns>The name of the view to which the type is mapped.</returns>
     public static string? GetViewName(this IReadOnlyTypeBase typeBase)
-        => typeBase.FundamentalEntityType.GetViewName();
+        => typeBase.ContainingEntityType.GetViewName();
 
     /// <summary>
     ///     Returns the database schema that contains the mapped view.
@@ -69,7 +78,7 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type to get the view schema for.</param>
     /// <returns>The database schema that contains the mapped view.</returns>
     public static string? GetViewSchema(this IReadOnlyTypeBase typeBase)
-        => typeBase.FundamentalEntityType.GetViewSchema();
+        => typeBase.ContainingEntityType.GetViewSchema();
 
     /// <summary>
     ///     Returns the views to which the type is mapped.
@@ -77,9 +86,12 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type to get the view mappings for.</param>
     /// <returns>The views to which the type is mapped.</returns>
     public static IEnumerable<IViewMapping> GetViewMappings(this ITypeBase typeBase)
-        => (IEnumerable<IViewMapping>?)typeBase.FindRuntimeAnnotationValue(
+    {
+        typeBase.Model.EnsureRelationalModel();
+        return (IEnumerable<IViewMapping>?)typeBase.FindRuntimeAnnotationValue(
                 RelationalAnnotationNames.ViewMappings)
             ?? Enumerable.Empty<IViewMapping>();
+    }
 
     #endregion View mapping
 
@@ -91,7 +103,7 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type.</param>
     /// <returns>The SQL string used to provide data for the type.</returns>
     public static string? GetSqlQuery(this IReadOnlyTypeBase typeBase)
-        => typeBase.FundamentalEntityType.GetSqlQuery();
+        => typeBase.ContainingEntityType.GetSqlQuery();
 
     /// <summary>
     ///     Returns the SQL string mappings.
@@ -99,9 +111,12 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type to get the SQL string mappings for.</param>
     /// <returns>The SQL string to which the type is mapped.</returns>
     public static IEnumerable<ISqlQueryMapping> GetSqlQueryMappings(this ITypeBase typeBase)
-        => (IEnumerable<ISqlQueryMapping>?)typeBase.FindRuntimeAnnotationValue(
+    {
+        typeBase.Model.EnsureRelationalModel();
+        return (IEnumerable<ISqlQueryMapping>?)typeBase.FindRuntimeAnnotationValue(
                 RelationalAnnotationNames.SqlQueryMappings)
             ?? Enumerable.Empty<ISqlQueryMapping>();
+    }
 
     #endregion SQL query mapping
 
@@ -113,7 +128,7 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type to get the function name for.</param>
     /// <returns>The name of the function to which the type is mapped.</returns>
     public static string? GetFunctionName(this IReadOnlyTypeBase typeBase)
-        => typeBase.FundamentalEntityType.GetFunctionName();
+        => typeBase.ContainingEntityType.GetFunctionName();
 
     /// <summary>
     ///     Returns the functions to which the type is mapped.
@@ -121,9 +136,12 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type to get the function mappings for.</param>
     /// <returns>The functions to which the type is mapped.</returns>
     public static IEnumerable<IFunctionMapping> GetFunctionMappings(this ITypeBase typeBase)
-        => (IEnumerable<IFunctionMapping>?)typeBase.FindRuntimeAnnotationValue(
+    {
+        typeBase.Model.EnsureRelationalModel();
+        return (IEnumerable<IFunctionMapping>?)typeBase.FindRuntimeAnnotationValue(
                 RelationalAnnotationNames.FunctionMappings)
             ?? Enumerable.Empty<IFunctionMapping>();
+    }
 
     #endregion
 
@@ -136,7 +154,7 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type.</param>
     /// <returns>The stored procedure to which the type is mapped.</returns>
     public static IReadOnlyStoredProcedure? GetDeleteStoredProcedure(this IReadOnlyTypeBase typeBase)
-        => typeBase.FundamentalEntityType.GetDeleteStoredProcedure();
+        => typeBase.ContainingEntityType.GetDeleteStoredProcedure();
 
     /// <summary>
     ///     Returns the stored procedure to which the type is mapped for deletes
@@ -145,7 +163,7 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type.</param>
     /// <returns>The stored procedure to which the type is mapped.</returns>
     public static IStoredProcedure? GetDeleteStoredProcedure(this ITypeBase typeBase)
-        => typeBase.FundamentalEntityType.GetDeleteStoredProcedure();
+        => typeBase.ContainingEntityType.GetDeleteStoredProcedure();
 
     /// <summary>
     ///     Returns the stored procedure to which the type is mapped for inserts
@@ -154,7 +172,7 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type.</param>
     /// <returns>The stored procedure to which the type is mapped.</returns>
     public static IReadOnlyStoredProcedure? GetInsertStoredProcedure(this IReadOnlyTypeBase typeBase)
-        => typeBase.FundamentalEntityType.GetInsertStoredProcedure();
+        => typeBase.ContainingEntityType.GetInsertStoredProcedure();
 
     /// <summary>
     ///     Returns the stored procedure to which the type is mapped for inserts
@@ -163,7 +181,7 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type.</param>
     /// <returns>The stored procedure to which the type is mapped.</returns>
     public static IStoredProcedure? GetInsertStoredProcedure(this ITypeBase typeBase)
-        => typeBase.FundamentalEntityType.GetInsertStoredProcedure();
+        => typeBase.ContainingEntityType.GetInsertStoredProcedure();
 
     /// <summary>
     ///     Returns the stored procedure to which the type is mapped for updates
@@ -172,7 +190,7 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type.</param>
     /// <returns>The stored procedure to which the type is mapped.</returns>
     public static IReadOnlyStoredProcedure? GetUpdateStoredProcedure(this IReadOnlyTypeBase typeBase)
-        => typeBase.FundamentalEntityType.GetUpdateStoredProcedure();
+        => typeBase.ContainingEntityType.GetUpdateStoredProcedure();
 
     /// <summary>
     ///     Returns the stored procedure to which the type is mapped for updates
@@ -181,7 +199,7 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type.</param>
     /// <returns>The stored procedure to which the type is mapped.</returns>
     public static IStoredProcedure? GetUpdateStoredProcedure(this ITypeBase typeBase)
-        => typeBase.FundamentalEntityType.GetUpdateStoredProcedure();
+        => typeBase.ContainingEntityType.GetUpdateStoredProcedure();
 
     /// <summary>
     ///     Returns the insert stored procedures to which the type is mapped.
@@ -189,9 +207,12 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type.</param>
     /// <returns>The insert stored procedures to which the type is mapped.</returns>
     public static IEnumerable<IStoredProcedureMapping> GetInsertStoredProcedureMappings(this ITypeBase typeBase)
-        => (IEnumerable<IStoredProcedureMapping>?)typeBase.FindRuntimeAnnotationValue(
+    {
+        typeBase.Model.EnsureRelationalModel();
+        return (IEnumerable<IStoredProcedureMapping>?)typeBase.FindRuntimeAnnotationValue(
                 RelationalAnnotationNames.InsertStoredProcedureMappings)
             ?? Enumerable.Empty<IStoredProcedureMapping>();
+    }
 
     /// <summary>
     ///     Returns the delete stored procedures to which the type is mapped.
@@ -199,9 +220,12 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type.</param>
     /// <returns>The delete stored procedures to which the type is mapped.</returns>
     public static IEnumerable<IStoredProcedureMapping> GetDeleteStoredProcedureMappings(this ITypeBase typeBase)
-        => (IEnumerable<IStoredProcedureMapping>?)typeBase.FindRuntimeAnnotationValue(
+    {
+        typeBase.Model.EnsureRelationalModel();
+        return (IEnumerable<IStoredProcedureMapping>?)typeBase.FindRuntimeAnnotationValue(
                 RelationalAnnotationNames.DeleteStoredProcedureMappings)
             ?? Enumerable.Empty<IStoredProcedureMapping>();
+    }
 
     /// <summary>
     ///     Returns the update stored procedures to which the type is mapped.
@@ -209,9 +233,12 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type.</param>
     /// <returns>The update stored procedures to which the type is mapped.</returns>
     public static IEnumerable<IStoredProcedureMapping> GetUpdateStoredProcedureMappings(this ITypeBase typeBase)
-        => (IEnumerable<IStoredProcedureMapping>?)typeBase.FindRuntimeAnnotationValue(
+    {
+        typeBase.Model.EnsureRelationalModel();
+        return (IEnumerable<IStoredProcedureMapping>?)typeBase.FindRuntimeAnnotationValue(
                 RelationalAnnotationNames.UpdateStoredProcedureMappings)
             ?? Enumerable.Empty<IStoredProcedureMapping>();
+    }
 
     #endregion
 
@@ -229,7 +256,7 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type.</param>
     /// <returns>The configured type mapping fragments.</returns>
     public static IEnumerable<IReadOnlyEntityTypeMappingFragment> GetMappingFragments(this IReadOnlyTypeBase typeBase)
-        => typeBase.FundamentalEntityType.GetMappingFragments();
+        => typeBase.ContainingEntityType.GetMappingFragments();
 
     /// <summary>
     ///     <para>
@@ -243,7 +270,7 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type.</param>
     /// <returns>The configured type mapping fragments.</returns>
     public static IEnumerable<IEntityTypeMappingFragment> GetMappingFragments(this ITypeBase typeBase)
-        => typeBase.FundamentalEntityType.GetMappingFragments();
+        => typeBase.ContainingEntityType.GetMappingFragments();
 
     /// <summary>
     ///     <para>
@@ -260,7 +287,7 @@ public static class RelationalTypeBaseExtensions
     public static IEnumerable<IReadOnlyEntityTypeMappingFragment> GetMappingFragments(
         this IReadOnlyTypeBase typeBase,
         StoreObjectType storeObjectType)
-        => typeBase.FundamentalEntityType.GetMappingFragments(storeObjectType);
+        => typeBase.ContainingEntityType.GetMappingFragments(storeObjectType);
 
     /// <summary>
     ///     <para>
@@ -277,7 +304,7 @@ public static class RelationalTypeBaseExtensions
     public static IEnumerable<IEntityTypeMappingFragment> GetMappingFragments(
         this ITypeBase typeBase,
         StoreObjectType storeObjectType)
-        => typeBase.FundamentalEntityType.GetMappingFragments(storeObjectType);
+        => typeBase.ContainingEntityType.GetMappingFragments(storeObjectType);
 
     /// <summary>
     ///     <para>
@@ -294,7 +321,7 @@ public static class RelationalTypeBaseExtensions
     public static IReadOnlyEntityTypeMappingFragment? FindMappingFragment(
         this IReadOnlyTypeBase typeBase,
         in StoreObjectIdentifier storeObject)
-        => typeBase.FundamentalEntityType.FindMappingFragment(storeObject);
+        => typeBase.ContainingEntityType.FindMappingFragment(storeObject);
 
     /// <summary>
     ///     <para>
@@ -311,7 +338,7 @@ public static class RelationalTypeBaseExtensions
     public static IEntityTypeMappingFragment? FindMappingFragment(
         this ITypeBase typeBase,
         in StoreObjectIdentifier storeObject)
-        => typeBase.FundamentalEntityType.FindMappingFragment(storeObject);
+        => typeBase.ContainingEntityType.FindMappingFragment(storeObject);
 
     #endregion
 
@@ -323,7 +350,7 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type.</param>
     /// <returns>The mapping strategy for the derived types.</returns>
     public static string? GetMappingStrategy(this IReadOnlyTypeBase typeBase)
-        => typeBase.FundamentalEntityType.GetMappingStrategy();
+        => typeBase.ContainingEntityType.GetMappingStrategy();
 
     #endregion Mapping strategy
 
@@ -343,11 +370,19 @@ public static class RelationalTypeBaseExtensions
     /// <param name="typeBase">The type to get the container column name for.</param>
     /// <returns>The container column name to which the type is mapped.</returns>
     public static string? GetContainerColumnName(this IReadOnlyTypeBase typeBase)
-        => typeBase.FindAnnotation(RelationalAnnotationNames.ContainerColumnName)?.Value is string columnName
-            ? columnName
-            : typeBase is IReadOnlyEntityType entityType
-                ? (entityType.FindOwnership()?.PrincipalEntityType.GetContainerColumnName())
-                : ((IReadOnlyComplexType)typeBase).ComplexProperty.DeclaringType.GetContainerColumnName();
+        => typeBase is IReadOnlyEntityType entityType
+            ? entityType.GetContainerColumnName()
+            : ((IReadOnlyComplexType)typeBase).GetContainerColumnName();
+
+    /// <summary>
+    ///     Gets the column type to use for the container column to which the type is mapped.
+    /// </summary>
+    /// <param name="typeBase">The type.</param>
+    /// <returns>The database column type.</returns>
+    public static string? GetContainerColumnType(this IReadOnlyTypeBase typeBase)
+        => typeBase is IReadOnlyEntityType entityType
+            ? entityType.GetContainerColumnType()
+            : null;
 
     /// <summary>
     ///     Gets the value of JSON property name used for the given entity mapped to a JSON column.
@@ -363,10 +398,10 @@ public static class RelationalTypeBaseExtensions
     public static string? GetJsonPropertyName(this IReadOnlyTypeBase typeBase)
         => (string?)typeBase.FindAnnotation(RelationalAnnotationNames.JsonPropertyName)?.Value
             ?? (!typeBase.IsMappedToJson()
-                    ? null
-                    : typeBase is IReadOnlyEntityType entityType
-                ? entityType.FindOwnership()!.GetNavigation(pointsToPrincipal: false)!.Name
-                : ((IReadOnlyComplexType)typeBase).ComplexProperty.Name);
+                ? null
+                : typeBase is IReadOnlyEntityType entityType
+                    ? entityType.FindOwnership()!.GetNavigation(pointsToPrincipal: false)!.Name
+                    : ((IReadOnlyComplexType)typeBase).ComplexProperty.Name);
 
     #endregion
 }

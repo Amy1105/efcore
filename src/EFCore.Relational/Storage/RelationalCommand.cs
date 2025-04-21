@@ -21,7 +21,6 @@ namespace Microsoft.EntityFrameworkCore.Storage;
 public class RelationalCommand : IRelationalCommand
 {
     private RelationalDataReader? _relationalReader;
-    private readonly Stopwatch _stopwatch = new();
 
     /// <summary>
     ///     <para>
@@ -34,14 +33,17 @@ public class RelationalCommand : IRelationalCommand
     /// </summary>
     /// <param name="dependencies">Service dependencies.</param>
     /// <param name="commandText">The text of the command to be executed.</param>
+    /// <param name="logCommandText">Text to be logged for the command.</param>
     /// <param name="parameters">Parameters for the command.</param>
     public RelationalCommand(
         RelationalCommandBuilderDependencies dependencies,
         string commandText,
+        string logCommandText,
         IReadOnlyList<IRelationalParameter> parameters)
     {
         Dependencies = dependencies;
         CommandText = commandText;
+        LogCommandText = logCommandText;
         Parameters = parameters;
     }
 
@@ -54,6 +56,11 @@ public class RelationalCommand : IRelationalCommand
     ///     Gets the command text to be executed.
     /// </summary>
     public virtual string CommandText { get; private set; }
+
+    /// <summary>
+    ///     Gets the command text to be logged.
+    /// </summary>
+    public virtual string LogCommandText { get; private set; }
 
     /// <summary>
     ///     Gets the parameters for the command.
@@ -81,15 +88,16 @@ public class RelationalCommand : IRelationalCommand
 
         connection.Open();
 
+        var stopwatch = SharedStopwatch.StartNew();
+
         try
         {
             if (shouldLogCommandExecute)
             {
-                _stopwatch.Restart();
-
                 var interceptionResult = logger?.CommandNonQueryExecuting(
                         connection,
                         command,
+                        LogCommandText,
                         context,
                         commandId,
                         connection.ConnectionId,
@@ -104,12 +112,13 @@ public class RelationalCommand : IRelationalCommand
                 return logger?.CommandNonQueryExecuted(
                         connection,
                         command,
+                        LogCommandText,
                         context,
                         commandId,
                         connection.ConnectionId,
                         nonQueryResult,
                         startTime,
-                        _stopwatch.Elapsed,
+                        stopwatch.Elapsed,
                         parameterObject.CommandSource)
                     ?? nonQueryResult;
             }
@@ -125,12 +134,13 @@ public class RelationalCommand : IRelationalCommand
                 logger?.CommandCanceled(
                     connection,
                     command,
+                    LogCommandText,
                     context,
                     DbCommandMethod.ExecuteNonQuery,
                     commandId,
                     connection.ConnectionId,
                     startTime,
-                    _stopwatch.Elapsed,
+                    stopwatch.Elapsed,
                     parameterObject.CommandSource);
             }
             else
@@ -138,13 +148,14 @@ public class RelationalCommand : IRelationalCommand
                 logger?.CommandError(
                     connection,
                     command,
+                    LogCommandText,
                     context,
                     DbCommandMethod.ExecuteNonQuery,
                     commandId,
                     connection.ConnectionId,
                     exception,
                     startTime,
-                    _stopwatch.Elapsed,
+                    stopwatch.Elapsed,
                     parameterObject.CommandSource);
             }
 
@@ -183,17 +194,18 @@ public class RelationalCommand : IRelationalCommand
 
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
+        var stopwatch = SharedStopwatch.StartNew();
+
         try
         {
             if (shouldLogCommandExecute)
             {
-                _stopwatch.Restart();
-
                 var interceptionResult = logger == null
                     ? default
                     : await logger.CommandNonQueryExecutingAsync(
                             connection,
                             command,
+                            LogCommandText,
                             context,
                             commandId,
                             connection.ConnectionId,
@@ -211,12 +223,13 @@ public class RelationalCommand : IRelationalCommand
                     result = await logger.CommandNonQueryExecutedAsync(
                             connection,
                             command,
+                            LogCommandText,
                             context,
                             commandId,
                             connection.ConnectionId,
                             result,
                             startTime,
-                            _stopwatch.Elapsed,
+                            stopwatch.Elapsed,
                             parameterObject.CommandSource,
                             cancellationToken)
                         .ConfigureAwait(false);
@@ -238,12 +251,13 @@ public class RelationalCommand : IRelationalCommand
                     await logger.CommandCanceledAsync(
                             connection,
                             command,
+                            LogCommandText,
                             context,
                             DbCommandMethod.ExecuteNonQuery,
                             commandId,
                             connection.ConnectionId,
                             startTime,
-                            _stopwatch.Elapsed,
+                            stopwatch.Elapsed,
                             parameterObject.CommandSource,
                             cancellationToken)
                         .ConfigureAwait(false);
@@ -253,13 +267,14 @@ public class RelationalCommand : IRelationalCommand
                     await logger.CommandErrorAsync(
                             connection,
                             command,
+                            LogCommandText,
                             context,
                             DbCommandMethod.ExecuteNonQuery,
                             commandId,
                             connection.ConnectionId,
                             exception,
                             startTime,
-                            _stopwatch.Elapsed,
+                            stopwatch.Elapsed,
                             parameterObject.CommandSource,
                             cancellationToken)
                         .ConfigureAwait(false);
@@ -295,15 +310,16 @@ public class RelationalCommand : IRelationalCommand
 
         connection.Open();
 
+        var stopwatch = SharedStopwatch.StartNew();
+
         try
         {
             if (shouldLogCommandExecute)
             {
-                _stopwatch.Restart();
-
                 var interceptionResult = logger?.CommandScalarExecuting(
                         connection,
                         command,
+                        LogCommandText,
                         context,
                         commandId,
                         connection.ConnectionId,
@@ -318,12 +334,13 @@ public class RelationalCommand : IRelationalCommand
                 return logger?.CommandScalarExecuted(
                         connection,
                         command,
+                        LogCommandText,
                         context,
                         commandId,
                         connection.ConnectionId,
                         result,
                         startTime,
-                        _stopwatch.Elapsed,
+                        stopwatch.Elapsed,
                         parameterObject.CommandSource)
                     ?? result;
             }
@@ -339,12 +356,13 @@ public class RelationalCommand : IRelationalCommand
                 logger?.CommandCanceled(
                     connection,
                     command,
+                    LogCommandText,
                     context,
                     DbCommandMethod.ExecuteScalar,
                     commandId,
                     connection.ConnectionId,
                     startTime,
-                    _stopwatch.Elapsed,
+                    stopwatch.Elapsed,
                     parameterObject.CommandSource);
             }
             else
@@ -352,13 +370,14 @@ public class RelationalCommand : IRelationalCommand
                 logger?.CommandError(
                     connection,
                     command,
+                    LogCommandText,
                     context,
                     DbCommandMethod.ExecuteScalar,
                     commandId,
                     connection.ConnectionId,
                     exception,
                     startTime,
-                    _stopwatch.Elapsed,
+                    stopwatch.Elapsed,
                     parameterObject.CommandSource);
             }
 
@@ -397,17 +416,18 @@ public class RelationalCommand : IRelationalCommand
 
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
+        var stopwatch = SharedStopwatch.StartNew();
+
         try
         {
             if (shouldLogCommandExecute)
             {
-                _stopwatch.Restart();
-
                 var interceptionResult = logger == null
                     ? default
                     : await logger.CommandScalarExecutingAsync(
                             connection,
                             command,
+                            LogCommandText,
                             context,
                             commandId,
                             connection.ConnectionId,
@@ -425,12 +445,13 @@ public class RelationalCommand : IRelationalCommand
                     result = await logger.CommandScalarExecutedAsync(
                         connection,
                         command,
+                        LogCommandText,
                         context,
                         commandId,
                         connection.ConnectionId,
                         result,
                         startTime,
-                        _stopwatch.Elapsed,
+                        stopwatch.Elapsed,
                         parameterObject.CommandSource,
                         cancellationToken).ConfigureAwait(false);
                 }
@@ -451,12 +472,13 @@ public class RelationalCommand : IRelationalCommand
                     await logger.CommandCanceledAsync(
                             connection,
                             command,
+                            LogCommandText,
                             context,
                             DbCommandMethod.ExecuteScalar,
                             commandId,
                             connection.ConnectionId,
                             startTime,
-                            _stopwatch.Elapsed,
+                            stopwatch.Elapsed,
                             parameterObject.CommandSource,
                             cancellationToken)
                         .ConfigureAwait(false);
@@ -466,13 +488,14 @@ public class RelationalCommand : IRelationalCommand
                     await logger.CommandErrorAsync(
                             connection,
                             command,
+                            LogCommandText,
                             context,
                             DbCommandMethod.ExecuteScalar,
                             commandId,
                             connection.ConnectionId,
                             exception,
                             startTime,
-                            _stopwatch.Elapsed,
+                            stopwatch.Elapsed,
                             parameterObject.CommandSource,
                             cancellationToken)
                         .ConfigureAwait(false);
@@ -508,22 +531,21 @@ public class RelationalCommand : IRelationalCommand
         // Guid.NewGuid is expensive, do it only if needed
         var commandId = shouldLogCommandCreate || shouldLogCommandExecute ? Guid.NewGuid() : default;
 
-        var command = CreateDbCommand(parameterObject, commandId, DbCommandMethod.ExecuteReader);
-
         connection.Open();
 
+        var command = CreateDbCommand(parameterObject, commandId, DbCommandMethod.ExecuteReader);
         var readerOpen = false;
         DbDataReader reader;
+        var stopwatch = SharedStopwatch.StartNew();
 
         try
         {
             if (shouldLogCommandExecute)
             {
-                _stopwatch.Restart();
-
                 var interceptionResult = logger!.CommandReaderExecuting(
                     connection,
                     command,
+                    LogCommandText,
                     context,
                     commandId,
                     connection.ConnectionId,
@@ -537,12 +559,13 @@ public class RelationalCommand : IRelationalCommand
                 reader = logger.CommandReaderExecuted(
                     connection,
                     command,
+                    LogCommandText,
                     context,
                     commandId,
                     connection.ConnectionId,
                     reader,
                     startTime,
-                    _stopwatch.Elapsed,
+                    stopwatch.Elapsed,
                     parameterObject.CommandSource);
             }
             else
@@ -557,12 +580,13 @@ public class RelationalCommand : IRelationalCommand
                 logger?.CommandCanceled(
                     connection,
                     command,
+                    LogCommandText,
                     context,
                     DbCommandMethod.ExecuteReader,
                     commandId,
                     connection.ConnectionId,
                     startTime,
-                    _stopwatch.Elapsed,
+                    stopwatch.Elapsed,
                     parameterObject.CommandSource);
             }
             else
@@ -570,13 +594,14 @@ public class RelationalCommand : IRelationalCommand
                 logger?.CommandError(
                     connection,
                     command,
+                    LogCommandText,
                     context,
                     DbCommandMethod.ExecuteReader,
                     commandId,
                     connection.ConnectionId,
                     exception,
                     startTime,
-                    _stopwatch.Elapsed,
+                    stopwatch.Elapsed,
                     parameterObject.CommandSource);
             }
 
@@ -636,22 +661,21 @@ public class RelationalCommand : IRelationalCommand
         // Guid.NewGuid is expensive, do it only if needed
         var commandId = shouldLogCommandCreate || shouldLogCommandExecute ? Guid.NewGuid() : default;
 
-        var command = CreateDbCommand(parameterObject, commandId, DbCommandMethod.ExecuteReader);
-
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
+        var command = CreateDbCommand(parameterObject, commandId, DbCommandMethod.ExecuteReader);
         var readerOpen = false;
         DbDataReader reader;
+        var stopwatch = SharedStopwatch.StartNew();
 
         try
         {
             if (shouldLogCommandExecute)
             {
-                _stopwatch.Restart();
-
                 var interceptionResult = await logger!.CommandReaderExecutingAsync(
                         connection,
                         command,
+                        LogCommandText,
                         context,
                         commandId,
                         connection.ConnectionId,
@@ -667,12 +691,13 @@ public class RelationalCommand : IRelationalCommand
                 reader = await logger.CommandReaderExecutedAsync(
                         connection,
                         command,
+                        LogCommandText,
                         context,
                         commandId,
                         connection.ConnectionId,
                         reader,
                         startTime,
-                        _stopwatch.Elapsed,
+                        stopwatch.Elapsed,
                         parameterObject.CommandSource,
                         cancellationToken)
                     .ConfigureAwait(false);
@@ -691,12 +716,13 @@ public class RelationalCommand : IRelationalCommand
                     await logger.CommandCanceledAsync(
                             connection,
                             command,
+                            LogCommandText,
                             context,
                             DbCommandMethod.ExecuteReader,
                             commandId,
                             connection.ConnectionId,
                             startTime,
-                            _stopwatch.Elapsed,
+                            stopwatch.Elapsed,
                             parameterObject.CommandSource,
                             cancellationToken)
                         .ConfigureAwait(false);
@@ -706,13 +732,14 @@ public class RelationalCommand : IRelationalCommand
                     await logger.CommandErrorAsync(
                             connection,
                             command,
+                            LogCommandText,
                             context,
                             DbCommandMethod.ExecuteReader,
                             commandId,
                             connection.ConnectionId,
                             exception,
                             startTime,
-                            _stopwatch.Elapsed,
+                            stopwatch.Elapsed,
                             parameterObject.CommandSource,
                             cancellationToken)
                         .ConfigureAwait(false);
@@ -776,11 +803,11 @@ public class RelationalCommand : IRelationalCommand
 
         DbCommand command;
 
+        var stopwatch = SharedStopwatch.StartNew();
+
         var logCommandCreate = logger?.ShouldLogCommandCreate(startTime) == true;
         if (logCommandCreate)
         {
-            _stopwatch.Restart();
-
             var interceptionResult = logger!.CommandCreating(
                 connection, commandMethod, context, commandId, connectionId, startTime,
                 parameterObject.CommandSource);
@@ -797,7 +824,7 @@ public class RelationalCommand : IRelationalCommand
                 commandId,
                 connectionId,
                 startTime,
-                _stopwatch.Elapsed,
+                stopwatch.Elapsed,
                 parameterObject.CommandSource);
         }
         else
@@ -832,7 +859,7 @@ public class RelationalCommand : IRelationalCommand
                 commandId,
                 connectionId,
                 startTime,
-                _stopwatch.Elapsed,
+                stopwatch.Elapsed,
                 parameterObject.CommandSource);
         }
 
@@ -880,6 +907,7 @@ public class RelationalCommand : IRelationalCommand
     public virtual void PopulateFrom(IRelationalCommandTemplate commandTemplate)
     {
         CommandText = commandTemplate.CommandText;
+        LogCommandText = commandTemplate.LogCommandText;
         Parameters = commandTemplate.Parameters;
     }
 }

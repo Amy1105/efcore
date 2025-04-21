@@ -34,8 +34,103 @@ public interface IConventionTypeBase : IReadOnlyTypeBase, IConventionAnnotatable
     /// <summary>
     ///     Gets this entity type or the one on which the complex property chain is declared.
     /// </summary>
-    new IConventionEntityType FundamentalEntityType
+    new IConventionEntityType ContainingEntityType
         => (IConventionEntityType)this;
+
+    /// <summary>
+    ///     Gets the base type of this type. Returns <see langword="null" /> if this is not a derived type in an inheritance hierarchy.
+    /// </summary>
+    new IConventionTypeBase? BaseType { get; }
+
+    /// <summary>
+    ///     Gets the root base type for a given type.
+    /// </summary>
+    /// <returns>
+    ///     The root base type. If the given type is not a derived type, then the same type is returned.
+    /// </returns>
+    new IConventionTypeBase GetRootType()
+        => (IConventionTypeBase)((IReadOnlyTypeBase)this).GetRootType();
+
+    /// <summary>
+    ///     Gets all types in the model that derive from this type.
+    /// </summary>
+    /// <returns>The derived types.</returns>
+    new IEnumerable<IConventionTypeBase> GetDerivedTypes()
+        => ((IReadOnlyTypeBase)this).GetDerivedTypes().Cast<IConventionTypeBase>();
+
+    /// <summary>
+    ///     Returns all derived types of this type, including the type itself.
+    /// </summary>
+    /// <returns>Derived types.</returns>
+    new IEnumerable<IConventionTypeBase> GetDerivedTypesInclusive()
+        => ((IReadOnlyTypeBase)this).GetDerivedTypesInclusive().Cast<IConventionTypeBase>();
+
+    /// <summary>
+    ///     Gets all types in the model that directly derive from this type.
+    /// </summary>
+    /// <returns>The derived types.</returns>
+    new IEnumerable<IConventionTypeBase> GetDirectlyDerivedTypes()
+        => ((IReadOnlyTypeBase)this).GetDirectlyDerivedTypes().Cast<IConventionTypeBase>();
+
+    /// <summary>
+    ///     Returns the property that will be used for storing a discriminator value.
+    /// </summary>
+    /// <returns>The property that will be used for storing a discriminator value.</returns>
+    new IConventionProperty? FindDiscriminatorProperty()
+        => (IConventionProperty?)((IReadOnlyEntityType)this).FindDiscriminatorProperty();
+
+    /// <summary>
+    ///     Sets the <see cref="IReadOnlyProperty" /> that will be used for storing a discriminator value.
+    /// </summary>
+    /// <param name="property">The property to set.</param>
+    /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
+    /// <returns>The discriminator property.</returns>
+    IConventionProperty? SetDiscriminatorProperty(IReadOnlyProperty? property, bool fromDataAnnotation = false);
+
+    /// <summary>
+    ///     Gets the <see cref="ConfigurationSource" /> for the discriminator property.
+    /// </summary>
+    /// <returns>The <see cref="ConfigurationSource" /> or <see langword="null" /> if no discriminator property has been set.</returns>
+    ConfigurationSource? GetDiscriminatorPropertyConfigurationSource();
+
+    /// <summary>
+    ///     Sets the discriminator value for this type.
+    /// </summary>
+    /// <param name="value">The value to set.</param>
+    /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
+    /// <returns>The configured value.</returns>
+    object? SetDiscriminatorValue(object? value, bool fromDataAnnotation = false)
+        => SetAnnotation(CoreAnnotationNames.DiscriminatorValue, value, fromDataAnnotation)
+            ?.Value;
+
+    /// <summary>
+    ///     Removes the discriminator value for this type.
+    /// </summary>
+    /// <returns>The removed discriminator value.</returns>
+    object? RemoveDiscriminatorValue()
+        => RemoveAnnotation(CoreAnnotationNames.DiscriminatorValue)?.Value;
+
+    /// <summary>
+    ///     Gets the <see cref="ConfigurationSource" /> for the discriminator value.
+    /// </summary>
+    /// <returns>The <see cref="ConfigurationSource" /> or <see langword="null" /> if no discriminator value has been set.</returns>
+    ConfigurationSource? GetDiscriminatorValueConfigurationSource()
+        => FindAnnotation(CoreAnnotationNames.DiscriminatorValue)
+            ?.GetConfigurationSource();
+
+    /// <summary>
+    ///     Sets the base type of this type. Returns <see langword="null" /> if this is not a derived type in an inheritance hierarchy.
+    /// </summary>
+    /// <param name="structuralType">The base type.</param>
+    /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
+    /// <returns>The new base type.</returns>
+    IConventionTypeBase? SetBaseType(IConventionTypeBase? structuralType, bool fromDataAnnotation = false);
+
+    /// <summary>
+    ///     Returns the configuration source for the <see cref="BaseType" /> property.
+    /// </summary>
+    /// <returns>The configuration source for the <see cref="BaseType" /> property.</returns>
+    ConfigurationSource? GetBaseTypeConfigurationSource();
 
     /// <summary>
     ///     Marks the given member name as ignored, preventing conventions from adding a matching property
@@ -260,14 +355,19 @@ public interface IConventionTypeBase : IReadOnlyTypeBase, IConventionAnnotatable
     ///     Adds a property to this type.
     /// </summary>
     /// <param name="memberInfo">The corresponding member on the type.</param>
+    /// <param name="complexTypeName">The name of the complex type.</param>
     /// <param name="collection">Indicates whether the property represents a collection.</param>
     /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
     /// <returns>The newly created property.</returns>
     [RequiresUnreferencedCode("Currently used only in tests")]
-    IConventionComplexProperty? AddComplexProperty(MemberInfo memberInfo, bool collection = false, bool fromDataAnnotation = false)
+    IConventionComplexProperty? AddComplexProperty(
+        MemberInfo memberInfo,
+        string? complexTypeName = null,
+        bool collection = false,
+        bool fromDataAnnotation = false)
         => AddComplexProperty(
             memberInfo.GetSimpleMemberName(), memberInfo.GetMemberType(),
-            memberInfo, memberInfo.GetMemberType(), collection, fromDataAnnotation);
+            memberInfo, memberInfo.GetMemberType(), complexTypeName, collection, fromDataAnnotation);
 
     /// <summary>
     ///     Adds a property to this type.
@@ -284,6 +384,7 @@ public interface IConventionTypeBase : IReadOnlyTypeBase, IConventionAnnotatable
     /// <param name="name">The name of the property to add.</param>
     /// <param name="propertyType">The property type.</param>
     /// <param name="complexType">The type of value the property will hold.</param>
+    /// <param name="complexTypeName">The name of the complex type.</param>
     /// <param name="collection">Indicates whether the property represents a collection.</param>
     /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
     /// <returns>The newly created property.</returns>
@@ -291,6 +392,7 @@ public interface IConventionTypeBase : IReadOnlyTypeBase, IConventionAnnotatable
         string name,
         [DynamicallyAccessedMembers(IProperty.DynamicallyAccessedMemberTypes)] Type propertyType,
         [DynamicallyAccessedMembers(IProperty.DynamicallyAccessedMemberTypes)] Type complexType,
+        string? complexTypeName = null,
         bool collection = false,
         bool fromDataAnnotation = false);
 
@@ -308,6 +410,7 @@ public interface IConventionTypeBase : IReadOnlyTypeBase, IConventionAnnotatable
     ///     </para>
     /// </param>
     /// <param name="complexType">The type of value the property will hold.</param>
+    /// <param name="complexTypeName">The name of the complex type.</param>
     /// <param name="collection">Indicates whether the property represents a collection.</param>
     /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
     /// <returns>The newly created property.</returns>
@@ -316,6 +419,7 @@ public interface IConventionTypeBase : IReadOnlyTypeBase, IConventionAnnotatable
         [DynamicallyAccessedMembers(IProperty.DynamicallyAccessedMemberTypes)] Type propertyType,
         MemberInfo memberInfo,
         [DynamicallyAccessedMembers(IProperty.DynamicallyAccessedMemberTypes)] Type complexType,
+        string? complexTypeName = null,
         bool collection = false,
         bool fromDataAnnotation = false);
 
@@ -325,6 +429,7 @@ public interface IConventionTypeBase : IReadOnlyTypeBase, IConventionAnnotatable
     /// <param name="name">The name of the property to add.</param>
     /// <param name="propertyType">The property type.</param>
     /// <param name="complexType">The type of value the property will hold.</param>
+    /// <param name="complexTypeName">The name of the complex type.</param>
     /// <param name="collection">Indicates whether the property represents a collection.</param>
     /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
     /// <returns>The newly created property.</returns>
@@ -332,6 +437,7 @@ public interface IConventionTypeBase : IReadOnlyTypeBase, IConventionAnnotatable
         string name,
         [DynamicallyAccessedMembers(IProperty.DynamicallyAccessedMemberTypes)] Type propertyType,
         [DynamicallyAccessedMembers(IProperty.DynamicallyAccessedMemberTypes)] Type complexType,
+        string? complexTypeName = null,
         bool collection = false,
         bool fromDataAnnotation = false)
     {
@@ -342,7 +448,7 @@ public interface IConventionTypeBase : IReadOnlyTypeBase, IConventionAnnotatable
                 CoreStrings.NonIndexerEntityType(name, DisplayName(), typeof(string).ShortDisplayName()));
         }
 
-        return AddComplexProperty(name, propertyType, indexerPropertyInfo, complexType, fromDataAnnotation);
+        return AddComplexProperty(name, propertyType, indexerPropertyInfo, complexType, complexTypeName, fromDataAnnotation);
     }
 
     /// <summary>
@@ -418,6 +524,34 @@ public interface IConventionTypeBase : IReadOnlyTypeBase, IConventionAnnotatable
     /// <param name="property">The property to remove.</param>
     /// <returns>The removed property, or <see langword="null" /> if the property was not found.</returns>
     IConventionComplexProperty? RemoveComplexProperty(IConventionComplexProperty property);
+
+    /// <summary>
+    ///     Gets the members defined on this type and base types.
+    /// </summary>
+    /// <returns>Type members.</returns>
+    new IEnumerable<IConventionPropertyBase> GetMembers();
+
+    /// <summary>
+    ///     Gets the members declared on this type.
+    /// </summary>
+    /// <returns>Declared members.</returns>
+    new IEnumerable<IConventionPropertyBase> GetDeclaredMembers();
+
+    /// <summary>
+    ///     Gets the member with the given name. Returns <see langword="null" /> if no member with the given name is defined.
+    /// </summary>
+    /// <remarks>
+    ///     This API only finds scalar properties and does not find navigation, complex or service properties.
+    /// </remarks>
+    /// <param name="name">The name of the property.</param>
+    /// <returns>The property, or <see langword="null" /> if none is found.</returns>
+    new IConventionPropertyBase? FindMember(string name);
+
+    /// <summary>
+    ///     Gets the members with the given name on this type, base types or derived types..
+    /// </summary>
+    /// <returns>Type members.</returns>
+    new IEnumerable<IConventionPropertyBase> FindMembersInHierarchy(string name);
 
     /// <summary>
     ///     Sets the change tracking strategy to use for this type. This strategy indicates how the

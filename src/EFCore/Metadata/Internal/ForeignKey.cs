@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
+using Microsoft.EntityFrameworkCore.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Metadata.Internal;
 
@@ -116,7 +117,10 @@ public class ForeignKey : ConventionAnnotatable, IMutableForeignKey, IConvention
     public virtual InternalForeignKeyBuilder Builder
     {
         [DebuggerStepThrough]
-        get => _builder ?? throw new InvalidOperationException(CoreStrings.ObjectRemovedFromModel);
+        get => _builder
+            ?? throw new InvalidOperationException(
+                CoreStrings.ObjectRemovedFromModel(
+                    Property.Format(Properties.Select(p => p.Name))));
     }
 
     /// <summary>
@@ -127,7 +131,8 @@ public class ForeignKey : ConventionAnnotatable, IMutableForeignKey, IConvention
     /// </summary>
     public virtual bool IsInModel
         => _builder is not null
-            && DeclaringEntityType.IsInModel;
+            && DeclaringEntityType.IsInModel
+            && PrincipalEntityType.IsInModel;
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -933,7 +938,7 @@ public class ForeignKey : ConventionAnnotatable, IMutableForeignKey, IConvention
     public virtual EntityType ResolveOtherEntityType(EntityType entityType)
         => (EntityType)((IReadOnlyForeignKey)this).GetRelatedEntityType(entityType);
 
-    // Note: This is set and used only by IdentityMapFactoryFactory, which ensures thread-safety
+    // Note: This is set and used only by KeyValueFactoryFactory, which ensures thread-safety
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
     ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
@@ -960,7 +965,7 @@ public class ForeignKey : ConventionAnnotatable, IMutableForeignKey, IConvention
         }
     }
 
-    // Note: This is set and used only by IdentityMapFactoryFactory, which ensures thread-safety
+    // Note: This is set and used only by KeyValueFactoryFactory, which ensures thread-safety
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
     ///     the same compatibility standards as public APIs. It may be changed or removed without notice in

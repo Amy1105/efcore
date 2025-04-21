@@ -10,6 +10,8 @@ namespace Microsoft.EntityFrameworkCore.Storage.Json;
 /// </summary>
 public sealed class JsonUInt64ReaderWriter : JsonValueReaderWriter<ulong>
 {
+    private static readonly PropertyInfo InstanceProperty = typeof(JsonUInt64ReaderWriter).GetProperty(nameof(Instance))!;
+
     /// <summary>
     ///     The singleton instance of this stateless reader/writer.
     /// </summary>
@@ -20,10 +22,14 @@ public sealed class JsonUInt64ReaderWriter : JsonValueReaderWriter<ulong>
     }
 
     /// <inheritdoc />
-    public override ulong FromJsonTyped(ref Utf8JsonReaderManager manager)
+    public override ulong FromJsonTyped(ref Utf8JsonReaderManager manager, object? existingObject = null)
         => manager.CurrentReader.GetUInt64();
 
     /// <inheritdoc />
     public override void ToJsonTyped(Utf8JsonWriter writer, ulong value)
         => writer.WriteNumberValue(value);
+
+    /// <inheritdoc />
+    public override Expression ConstructorExpression
+        => Expression.Property(null, InstanceProperty);
 }

@@ -30,7 +30,7 @@ public class SimplePrincipalKeyValueFactory<TKey> : IPrincipalKeyValueFactory<TK
         _property = key.Properties.Single();
         _propertyAccessors = _property.GetPropertyAccessors();
 
-        EqualityComparer = new NoNullsCustomEqualityComparer(_property.GetKeyValueComparer());
+        EqualityComparer = new NoNullsCustomEqualityComparer((ValueComparer<TKey>)_property.GetKeyValueComparer());
     }
 
     /// <summary>
@@ -41,15 +41,6 @@ public class SimplePrincipalKeyValueFactory<TKey> : IPrincipalKeyValueFactory<TK
     /// </summary>
     public virtual object? CreateFromKeyValues(IReadOnlyList<object?> keyValues)
         => keyValues[0];
-
-    /// <summary>
-    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
-    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
-    ///     any release. You should only use it directly in your code with extreme caution and knowing that
-    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
-    /// </summary>
-    public virtual object? CreateFromBuffer(ValueBuffer valueBuffer)
-        => _propertyAccessors.ValueBufferGetter!(valueBuffer);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -85,7 +76,7 @@ public class SimplePrincipalKeyValueFactory<TKey> : IPrincipalKeyValueFactory<TK
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public virtual TKey CreateFromOriginalValues(IUpdateEntry entry)
-        => ((Func<InternalEntityEntry, TKey>)_propertyAccessors.OriginalValueGetter!)((InternalEntityEntry)entry);
+        => ((Func<IInternalEntry, TKey>)_propertyAccessors.OriginalValueGetter!)((IInternalEntry)entry);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -94,7 +85,7 @@ public class SimplePrincipalKeyValueFactory<TKey> : IPrincipalKeyValueFactory<TK
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public virtual TKey CreateFromRelationshipSnapshot(IUpdateEntry entry)
-        => ((Func<InternalEntityEntry, TKey>)_propertyAccessors.RelationshipSnapshotGetter)((InternalEntityEntry)entry);
+        => ((Func<IInternalEntry, TKey>)_propertyAccessors.RelationshipSnapshotGetter)((IInternalEntry)entry);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -118,21 +109,12 @@ public class SimplePrincipalKeyValueFactory<TKey> : IPrincipalKeyValueFactory<TK
                 : CreateFromCurrentValues(entry),
             EqualityComparer);
 
-    private sealed class NoNullsCustomEqualityComparer : IEqualityComparer<TKey>
+    private sealed class NoNullsCustomEqualityComparer(ValueComparer<TKey> comparer) : IEqualityComparer<TKey>
     {
-        private readonly Func<TKey?, TKey?, bool> _equals;
-        private readonly Func<TKey, int> _hashCode;
-
-        public NoNullsCustomEqualityComparer(ValueComparer comparer)
-        {
-            _equals = (Func<TKey?, TKey?, bool>)comparer.EqualsExpression.Compile();
-            _hashCode = (Func<TKey, int>)comparer.HashCodeExpression.Compile();
-        }
-
         public bool Equals(TKey? x, TKey? y)
-            => _equals(x, y);
+            => comparer.Equals(x, y);
 
         public int GetHashCode([DisallowNull] TKey obj)
-            => _hashCode(obj);
+            => comparer.GetHashCode(obj);
     }
 }

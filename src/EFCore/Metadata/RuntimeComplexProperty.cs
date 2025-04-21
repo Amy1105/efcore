@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Metadata;
 
@@ -11,7 +12,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata;
 /// <remarks>
 ///     See <see href="https://aka.ms/efcore-docs-modeling">Modeling entity types and relationships</see> for more information and examples.
 /// </remarks>
-public class RuntimeComplexProperty : RuntimePropertyBase, IComplexProperty
+public class RuntimeComplexProperty : RuntimePropertyBase, IRuntimeComplexProperty
 {
     private readonly bool _isNullable;
     private readonly bool _isCollection;
@@ -36,7 +37,11 @@ public class RuntimeComplexProperty : RuntimePropertyBase, IComplexProperty
         bool collection,
         ChangeTrackingStrategy changeTrackingStrategy,
         PropertyInfo? indexerPropertyInfo,
-        bool propertyBag)
+        bool propertyBag,
+        string? discriminatorProperty,
+        object? discriminatorValue,
+        int propertyCount,
+        int complexPropertyCount)
         : base(name, propertyInfo, fieldInfo, propertyAccessMode)
     {
         DeclaringType = declaringType;
@@ -44,7 +49,10 @@ public class RuntimeComplexProperty : RuntimePropertyBase, IComplexProperty
         _isNullable = nullable;
         _isCollection = collection;
         ComplexType = new RuntimeComplexType(
-            targetTypeName, targetType, this, changeTrackingStrategy, indexerPropertyInfo, propertyBag);
+            targetTypeName, targetType, this, changeTrackingStrategy, indexerPropertyInfo, propertyBag,
+            discriminatorProperty, discriminatorValue,
+            propertyCount: propertyCount,
+            complexPropertyCount: complexPropertyCount);
     }
 
     /// <summary>
@@ -64,14 +72,15 @@ public class RuntimeComplexProperty : RuntimePropertyBase, IComplexProperty
     public virtual RuntimeComplexType ComplexType { get; }
 
     /// <inheritdoc />
-    public override object? Sentinel => null;
+    public override object? Sentinel
+        => null;
 
     /// <summary>
     ///     Returns a string that represents the current object.
     /// </summary>
     /// <returns>A string that represents the current object.</returns>
     public override string ToString()
-        => ((IProperty)this).ToDebugString(MetadataDebugStringOptions.SingleLineDefault);
+        => ((IReadOnlyComplexProperty)this).ToDebugString(MetadataDebugStringOptions.SingleLineDefault);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -82,8 +91,8 @@ public class RuntimeComplexProperty : RuntimePropertyBase, IComplexProperty
     [EntityFrameworkInternal]
     public virtual DebugView DebugView
         => new(
-            () => ((IProperty)this).ToDebugString(),
-            () => ((IProperty)this).ToDebugString(MetadataDebugStringOptions.LongDefault));
+            () => ((IReadOnlyComplexProperty)this).ToDebugString(),
+            () => ((IReadOnlyComplexProperty)this).ToDebugString(MetadataDebugStringOptions.LongDefault));
 
     /// <inheritdoc />
     IReadOnlyTypeBase IReadOnlyPropertyBase.DeclaringType
@@ -98,6 +107,7 @@ public class RuntimeComplexProperty : RuntimePropertyBase, IComplexProperty
         [DebuggerStepThrough]
         get => DeclaringType;
     }
+
     /// <inheritdoc />
 
     IComplexType IComplexProperty.ComplexType

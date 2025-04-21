@@ -58,7 +58,7 @@ public class StoredProcedureParameter :
     public virtual InternalStoredProcedureParameterBuilder Builder
     {
         [DebuggerStepThrough]
-        get => _builder ?? throw new InvalidOperationException(CoreStrings.ObjectRemovedFromModel);
+        get => _builder ?? throw new InvalidOperationException(CoreStrings.ObjectRemovedFromModel(Name));
     }
 
     /// <summary>
@@ -266,7 +266,6 @@ public class StoredProcedureParameter :
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    [EntityFrameworkInternal]
     public virtual DebugView DebugView
         => new(
             () => ((IStoredProcedureParameter)this).ToDebugString(),

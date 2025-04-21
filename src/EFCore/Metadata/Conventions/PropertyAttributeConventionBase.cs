@@ -11,8 +11,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions;
 /// </summary>
 /// <remarks>
 ///     <para>
-///         The deriving class must implement <see cref="IPropertyAddedConvention"/> and
-///         <see cref="IPropertyFieldChangedConvention"/> to also handle complex properties.
+///         The deriving class must implement <see cref="IPropertyAddedConvention" /> and
+///         <see cref="IPropertyFieldChangedConvention" /> to also handle complex properties.
 ///     </para>
 ///     <para>
 ///         See <see href="https://aka.ms/efcore-docs-conventions">Model building conventions</see> for more information and examples.
@@ -29,16 +29,14 @@ public abstract class PropertyAttributeConventionBase<TAttribute> :
     /// </summary>
     /// <param name="dependencies">Parameter object containing dependencies for this convention.</param>
     protected PropertyAttributeConventionBase(ProviderConventionSetBuilderDependencies dependencies)
-    {
-        Dependencies = dependencies;
-    }
+        => Dependencies = dependencies;
 
     /// <summary>
     ///     Dependencies for this service.
     /// </summary>
     protected virtual ProviderConventionSetBuilderDependencies Dependencies { get; }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public virtual void ProcessPropertyAdded(
         IConventionPropertyBuilder propertyBuilder,
         IConventionContext<IConventionPropertyBuilder> context)
@@ -54,7 +52,7 @@ public abstract class PropertyAttributeConventionBase<TAttribute> :
         Process(propertyBuilder, memberInfo, (IReadableConventionContext)context);
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public virtual void ProcessPropertyFieldChanged(
         IConventionPropertyBuilder propertyBuilder,
         FieldInfo? newFieldInfo,

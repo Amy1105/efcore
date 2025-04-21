@@ -20,21 +20,10 @@ public interface IEntityType : IReadOnlyEntityType, ITypeBase
     new IEntityType? BaseType { get; }
 
     /// <summary>
-    ///     Gets the <see cref="InstantiationBinding" /> for the preferred constructor.
-    /// </summary>
-    InstantiationBinding? ConstructorBinding { get; }
-
-    /// <summary>
     ///     Gets the <see cref="InstantiationBinding" /> for the preferred constructor when creating instances with only service
     ///     properties initialized.
     /// </summary>
     InstantiationBinding? ServiceOnlyConstructorBinding { get; }
-
-    /// <summary>
-    ///     Returns the <see cref="IProperty" /> that will be used for storing a discriminator value.
-    /// </summary>
-    new IProperty? FindDiscriminatorProperty()
-        => (IProperty?)((IReadOnlyEntityType)this).FindDiscriminatorProperty();
 
     /// <summary>
     ///     Gets the root base type for a given entity type.
@@ -78,14 +67,14 @@ public interface IEntityType : IReadOnlyEntityType, ITypeBase
     /// </summary>
     /// <returns>The derived types.</returns>
     new IEnumerable<IEntityType> GetDerivedTypes()
-        => ((IReadOnlyEntityType)this).GetDerivedTypes().Cast<IEntityType>();
+        => ((IReadOnlyTypeBase)this).GetDerivedTypes().Cast<IEntityType>();
 
     /// <summary>
     ///     Returns all derived types of this entity type, including the type itself.
     /// </summary>
     /// <returns>Derived types.</returns>
     new IEnumerable<IEntityType> GetDerivedTypesInclusive()
-        => ((IReadOnlyEntityType)this).GetDerivedTypesInclusive().Cast<IEntityType>();
+        => ((IReadOnlyTypeBase)this).GetDerivedTypesInclusive().Cast<IEntityType>();
 
     /// <summary>
     ///     Gets all types in the model that directly derive from this entity type.
@@ -316,6 +305,14 @@ public interface IEntityType : IReadOnlyEntityType, ITypeBase
         => ((IReadOnlyEntityType)this).GetDerivedNavigations().Cast<INavigation>();
 
     /// <summary>
+    ///     Gets all navigation properties declared on the base types and types derived from this entity type.
+    /// </summary>
+    /// <returns>Navigation properties.</returns>
+    IEnumerable<INavigation> GetNavigationsInHierarchy()
+        => GetAllBaseTypes().Concat(GetDerivedTypesInclusive())
+            .SelectMany(t => t.GetDeclaredNavigations());
+
+    /// <summary>
     ///     Gets all navigation properties on the given entity type.
     /// </summary>
     /// <returns>All navigation properties on the given entity type.</returns>
@@ -423,11 +420,121 @@ public interface IEntityType : IReadOnlyEntityType, ITypeBase
     /// <returns>The indexes defined on this entity type.</returns>
     new IEnumerable<IIndex> GetIndexes();
 
+    // The following methods are needed for binary compatibility
+
+    #region DO NOT DELETE
+
+    /// <summary>
+    ///     Gets a property on the given entity type. Returns <see langword="null" /> if no property is found.
+    /// </summary>
+    /// <remarks>
+    ///     This API only finds scalar properties and does not find navigation properties. Use
+    ///     <see cref="FindNavigation(MemberInfo)" /> to find a navigation property.
+    /// </remarks>
+    /// <param name="memberInfo">The property on the entity class.</param>
+    /// <returns>The property, or <see langword="null" /> if none is found.</returns>
+    new IProperty? FindProperty(MemberInfo memberInfo)
+        => (IProperty?)((IReadOnlyEntityType)this).FindProperty(memberInfo);
+
+    /// <summary>
+    ///     Gets the property with a given name. Returns <see langword="null" /> if no property with the given name is defined.
+    /// </summary>
+    /// <remarks>
+    ///     This API only finds scalar properties and does not find navigation properties. Use
+    ///     <see cref="FindNavigation(string)" /> to find a navigation property.
+    /// </remarks>
+    /// <param name="name">The name of the property.</param>
+    /// <returns>The property, or <see langword="null" /> if none is found.</returns>
+    new IProperty? FindProperty(string name);
+
+    /// <summary>
+    ///     Finds matching properties on the given entity type. Returns <see langword="null" /> if any property is not found.
+    /// </summary>
+    /// <remarks>
+    ///     This API only finds scalar properties and does not find navigation properties.
+    /// </remarks>
+    /// <param name="propertyNames">The property names.</param>
+    /// <returns>The properties, or <see langword="null" /> if any property is not found.</returns>
+    new IReadOnlyList<IProperty>? FindProperties(
+        IReadOnlyList<string> propertyNames)
+        => (IReadOnlyList<IProperty>?)((IReadOnlyEntityType)this).FindProperties(propertyNames);
+
+    /// <summary>
+    ///     Gets a property with the given name.
+    /// </summary>
+    /// <remarks>
+    ///     This API only finds scalar properties and does not find navigation properties. Use
+    ///     <see cref="FindNavigation(string)" /> to find a navigation property.
+    /// </remarks>
+    /// <param name="name">The property name.</param>
+    /// <returns>The property.</returns>
+    new IProperty GetProperty(string name)
+        => (IProperty)((IReadOnlyEntityType)this).GetProperty(name);
+
+    /// <summary>
+    ///     Finds a property declared on the type with the given name.
+    ///     Does not return properties defined on a base type.
+    /// </summary>
+    /// <param name="name">The property name.</param>
+    /// <returns>The property, or <see langword="null" /> if none is found.</returns>
+    new IProperty? FindDeclaredProperty(string name);
+
+    /// <summary>
+    ///     Gets all non-navigation properties declared on the given <see cref="IEntityType" />.
+    /// </summary>
+    /// <remarks>
+    ///     This method does not return properties declared on base types.
+    ///     It is useful when iterating over all entity types to avoid processing the same property more than once.
+    ///     Use <see cref="GetProperties" /> to also return properties declared on base types.
+    /// </remarks>
+    /// <returns>Declared non-navigation properties.</returns>
+    new IEnumerable<IProperty> GetDeclaredProperties();
+
+    /// <summary>
+    ///     Gets all non-navigation properties declared on the types derived from this entity type.
+    /// </summary>
+    /// <remarks>
+    ///     This method does not return properties declared on the given entity type itself.
+    ///     Use <see cref="GetProperties" /> to return properties declared on this
+    ///     and base entity typed types.
+    /// </remarks>
+    /// <returns>Derived non-navigation properties.</returns>
+    new IEnumerable<IProperty> GetDerivedProperties()
+        => ((IReadOnlyEntityType)this).GetDerivedProperties().Cast<IProperty>();
+
+    /// <summary>
+    ///     Gets the properties defined on this entity type.
+    /// </summary>
+    /// <remarks>
+    ///     This API only returns scalar properties and does not return navigation properties. Use
+    ///     <see cref="GetNavigations()" /> to get navigation properties.
+    /// </remarks>
+    /// <returns>The properties defined on this entity type.</returns>
+    new IEnumerable<IProperty> GetProperties();
+
+    #endregion
+
     /// <summary>
     ///     Returns the properties contained in foreign keys.
     /// </summary>
     /// <returns>The properties contained in foreign keys.</returns>
     IEnumerable<IProperty> GetForeignKeyProperties();
+
+    /// <summary>
+    ///     Gets all properties declared on the base types and types derived from this entity type.
+    /// </summary>
+    /// <returns>The properties.</returns>
+    IEnumerable<IProperty> ITypeBase.GetPropertiesInHierarchy()
+        => GetAllBaseTypes().Concat(GetDerivedTypesInclusive())
+            .SelectMany(t => t.GetDeclaredProperties());
+
+    /// <summary>
+    ///     Gets all properties declared on the base types and types derived from this entity type, including those on non-collection complex types.
+    /// </summary>
+    /// <returns>The properties.</returns>
+    IEnumerable<IProperty> ITypeBase.GetFlattenedPropertiesInHierarchy()
+        => GetAllBaseTypes().Concat(GetDerivedTypesInclusive())
+            .SelectMany(t => t.GetFlattenedDeclaredProperties());
 
     /// <summary>
     ///     Returns the properties that need a value to be generated when the entity entry transitions to the

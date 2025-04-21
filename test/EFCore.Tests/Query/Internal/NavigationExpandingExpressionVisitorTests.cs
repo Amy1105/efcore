@@ -12,50 +12,42 @@ public class NavigationExpandingExpressionVisitorTests
     {
         public TInterceptor Aggregate<TInterceptor>()
             where TInterceptor : class, IInterceptor
-        {
-            return null;
-        }
+            => null;
     }
 
-    private class TestNavigationExpandingExpressionVisitor : NavigationExpandingExpressionVisitor
+    private class TestNavigationExpandingExpressionVisitor() : NavigationExpandingExpressionVisitor(
+        null,
+        new QueryCompilationContext(
+            new QueryCompilationContextDependencies(
+                model: null,
+                queryTranslationPreprocessorFactory: null,
+                queryableMethodTranslatingExpressionVisitorFactory: null,
+                queryTranslationPostprocessorFactory: null,
+                shapedQueryCompilingExpressionVisitorFactory: null,
+                liftableConstantFactory: null,
+                liftableConstantProcessor: null,
+                new ExecutionStrategyTest.TestExecutionStrategy(new MyDemoContext()),
+                new CurrentDbContext(new MyDemoContext()),
+                contextOptions: null,
+                logger: null,
+                new TestInterceptors()
+            ), async: false),
+        null,
+        null)
     {
-        public TestNavigationExpandingExpressionVisitor()
-            : base(
-                null,
-                new QueryCompilationContext(new QueryCompilationContextDependencies(
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    new ExecutionStrategyTest.TestExecutionStrategy(new MyDemoContext()),
-                    new CurrentDbContext(new MyDemoContext()),
-                    null,
-                    null,
-                    new TestInterceptors()
-                    ), false),
-                null,
-                null)
-        {
-        }
-
         public Expression TestVisitExtension(Expression extensionExpression)
-        {
-            return base.VisitExtension(extensionExpression);
-        }
+            => base.VisitExtension(extensionExpression);
     }
 
     private class MyDemoContext : DbContext
     {
         protected internal override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            optionsBuilder.UseInMemoryDatabase(databaseName: "test");
-        }
+            => optionsBuilder.UseInMemoryDatabase(databaseName: "test");
     }
 
     private class TestEntityQueryRootExpression : EntityQueryRootExpression
     {
-        public int VisitCounter = 0;
+        public int VisitCounter;
 
         public TestEntityQueryRootExpression(IAsyncQueryProvider asyncQueryProvider, IEntityType entityType)
             : base(asyncQueryProvider, entityType)
@@ -72,7 +64,6 @@ public class NavigationExpandingExpressionVisitorTests
             VisitCounter++;
             return this;
         }
-
     }
 
     private class A
@@ -81,7 +72,7 @@ public class NavigationExpandingExpressionVisitorTests
     }
 
     [ConditionalFact]
-    public void Visits_extention_childrens()
+    public void Visits_extension_children()
     {
         var model = new Model();
         var e = model.AddEntityType(typeof(A), false, ConfigurationSource.Explicit);

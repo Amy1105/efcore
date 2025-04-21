@@ -3,7 +3,9 @@
 
 namespace Microsoft.EntityFrameworkCore.Query;
 
-public class SharedTypeQuerySqliteTest : SharedTypeQueryRelationalTestBase
+#nullable disable
+
+public class SharedTypeQuerySqliteTest(NonSharedFixture fixture) : SharedTypeQueryRelationalTestBase(fixture)
 {
     protected override ITestStoreFactory TestStoreFactory
         => SqliteTestStoreFactory.Instance;

@@ -21,7 +21,7 @@ namespace Microsoft.EntityFrameworkCore.Update;
 /// </remarks>
 public abstract class ReaderModificationCommandBatch : ModificationCommandBatch
 {
-    private readonly List<IReadOnlyModificationCommand> _modificationCommands = new();
+    private readonly List<IReadOnlyModificationCommand> _modificationCommands = [];
     private readonly int _batchHeaderLength;
     private bool _requiresTransaction = true;
     private bool _areMoreBatchesExpected;
@@ -393,7 +393,7 @@ public abstract class ReaderModificationCommandBatch : ModificationCommandBatch
 
             await ConsumeAsync(dataReader, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is not DbUpdateException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not DbUpdateException and not OperationCanceledException and not UnreachableException)
         {
             throw new DbUpdateException(
                 RelationalStrings.UpdateStoreException,

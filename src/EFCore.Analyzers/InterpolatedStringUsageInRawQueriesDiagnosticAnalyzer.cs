@@ -12,20 +12,16 @@ namespace Microsoft.EntityFrameworkCore;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class InterpolatedStringUsageInRawQueriesDiagnosticAnalyzer : DiagnosticAnalyzer
 {
-    public const string Id = "EF1002";
-
     private static readonly DiagnosticDescriptor Descriptor
-        // HACK: Work around dotnet/roslyn-analyzers#5890 by not using target-typed new
-        = new DiagnosticDescriptor(
-            Id,
+        = new(
+            EFDiagnostics.InterpolatedStringUsageInRawQueries,
             title: AnalyzerStrings.InterpolatedStringUsageInRawQueriesAnalyzerTitle,
             messageFormat: AnalyzerStrings.InterpolatedStringUsageInRawQueriesMessageFormat,
             category: "Security",
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true);
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
-        => ImmutableArray.Create(Descriptor);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Descriptor];
 
     public override void Initialize(AnalysisContext context)
     {
@@ -50,11 +46,12 @@ public sealed class InterpolatedStringUsageInRawQueriesDiagnosticAnalyzer : Diag
 
         if (report)
         {
-            context.ReportDiagnostic(Diagnostic.Create(
-                Descriptor,
-                GetTargetLocation(invocation.Syntax),
-                targetMethod.Name,
-                GetReplacementMethodName(targetMethod.Name)));
+            context.ReportDiagnostic(
+                Diagnostic.Create(
+                    Descriptor,
+                    GetTargetLocation(invocation.Syntax),
+                    targetMethod.Name,
+                    GetReplacementMethodName(targetMethod.Name)));
         }
 
         static Location GetTargetLocation(SyntaxNode syntax)
@@ -85,14 +82,15 @@ public sealed class InterpolatedStringUsageInRawQueriesDiagnosticAnalyzer : Diag
         }
     }
 
-    internal static string GetReplacementMethodName(string oldName) => oldName switch
-    {
-        "FromSqlRaw" => "FromSql",
-        "ExecuteSqlRaw" => "ExecuteSql",
-        "ExecuteSqlRawAsync" => "ExecuteSqlAsync",
-        "SqlQueryRaw" => "SqlQuery",
-        _ => oldName
-    };
+    internal static string GetReplacementMethodName(string oldName)
+        => oldName switch
+        {
+            "FromSqlRaw" => "FromSql",
+            "ExecuteSqlRaw" => "ExecuteSql",
+            "ExecuteSqlRawAsync" => "ExecuteSqlAsync",
+            "SqlQueryRaw" => "SqlQuery",
+            _ => oldName
+        };
 
     private static bool AnalyzeFromSqlRawInvocation(IInvocationOperation invocation)
     {
@@ -105,9 +103,9 @@ public sealed class InterpolatedStringUsageInRawQueriesDiagnosticAnalyzer : Diag
         Debug.Assert(correctFromSqlRaw is not null, "Unable to find original `FromSqlRaw` method");
 
         // Verify that the method is the one we analyze and its second argument, which corresponds to `string sql`, is an interpolated string
-        if (correctFromSqlRaw is null ||
-            !targetMethod.ConstructedFrom.Equals(correctFromSqlRaw, SymbolEqualityComparer.Default) ||
-            invocation.Arguments[1].Value is not IInterpolatedStringOperation interpolatedString)
+        if (correctFromSqlRaw is null
+            || !targetMethod.ConstructedFrom.Equals(correctFromSqlRaw, SymbolEqualityComparer.Default)
+            || invocation.Arguments[1].Value is not IInterpolatedStringOperation interpolatedString)
         {
             return false;
         }
@@ -170,9 +168,9 @@ public sealed class InterpolatedStringUsageInRawQueriesDiagnosticAnalyzer : Diag
         Debug.Assert(correctSqlQueryRaw is not null, "Unable to find original `SqlQueryRaw` method");
 
         // Verify that the method is the one we analyze and its second argument, which corresponds to `string sql`, is an interpolated string
-        if (correctSqlQueryRaw is null ||
-            !targetMethod.ConstructedFrom.Equals(correctSqlQueryRaw, SymbolEqualityComparer.Default) ||
-            invocation.Arguments[1].Value is not IInterpolatedStringOperation interpolatedString)
+        if (correctSqlQueryRaw is null
+            || !targetMethod.ConstructedFrom.Equals(correctSqlQueryRaw, SymbolEqualityComparer.Default)
+            || invocation.Arguments[1].Value is not IInterpolatedStringOperation interpolatedString)
         {
             return false;
         }
@@ -214,13 +212,13 @@ public sealed class InterpolatedStringUsageInRawQueriesDiagnosticAnalyzer : Diag
     private static IEnumerable<IMethodSymbol> ExecuteSqlRawMethods(Compilation compilation)
     {
         var type = compilation.RelationalDatabaseFacadeExtensionsType();
-        return type?.GetMembers("ExecuteSqlRaw").Where(s => s is IMethodSymbol).Cast<IMethodSymbol>() ?? Array.Empty<IMethodSymbol>();
+        return type?.GetMembers("ExecuteSqlRaw").Where(s => s is IMethodSymbol).Cast<IMethodSymbol>() ?? [];
     }
 
     private static IEnumerable<IMethodSymbol> ExecuteSqlRawAsyncMethods(Compilation compilation)
     {
         var type = compilation.RelationalDatabaseFacadeExtensionsType();
-        return type?.GetMembers("ExecuteSqlRawAsync").Where(s => s is IMethodSymbol).Cast<IMethodSymbol>() ?? Array.Empty<IMethodSymbol>();
+        return type?.GetMembers("ExecuteSqlRawAsync").Where(s => s is IMethodSymbol).Cast<IMethodSymbol>() ?? [];
     }
 
     private static IMethodSymbol? SqlQueryRawMethod(Compilation compilation)

@@ -19,7 +19,10 @@ public class JsonViewColumn : ViewColumn, IViewColumn
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public JsonViewColumn(string name, string type, View view,
+    public JsonViewColumn(
+        string name,
+        string type,
+        View view,
         RelationalTypeMapping? storeTypeMapping = null,
         ValueComparer? providerValueComparer = null)
         : base(name, type, view, storeTypeMapping, providerValueComparer)
@@ -33,5 +36,5 @@ public class JsonViewColumn : ViewColumn, IViewColumn
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     protected override RelationalTypeMapping GetDefaultStoreTypeMapping()
-        => (RelationalTypeMapping)Table.Model.Model.GetModelDependencies().TypeMappingSource.FindMapping(typeof(JsonElement))!;
+        => (RelationalTypeMapping)Table.Model.Model.GetModelDependencies().TypeMappingSource.FindMapping(typeof(JsonTypePlaceholder))!;
 }

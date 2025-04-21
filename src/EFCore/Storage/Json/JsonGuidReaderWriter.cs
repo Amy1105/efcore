@@ -10,6 +10,8 @@ namespace Microsoft.EntityFrameworkCore.Storage.Json;
 /// </summary>
 public sealed class JsonGuidReaderWriter : JsonValueReaderWriter<Guid>
 {
+    private static readonly PropertyInfo InstanceProperty = typeof(JsonGuidReaderWriter).GetProperty(nameof(Instance))!;
+
     /// <summary>
     ///     The singleton instance of this stateless reader/writer.
     /// </summary>
@@ -20,10 +22,14 @@ public sealed class JsonGuidReaderWriter : JsonValueReaderWriter<Guid>
     }
 
     /// <inheritdoc />
-    public override Guid FromJsonTyped(ref Utf8JsonReaderManager manager)
+    public override Guid FromJsonTyped(ref Utf8JsonReaderManager manager, object? existingObject = null)
         => manager.CurrentReader.GetGuid();
 
     /// <inheritdoc />
     public override void ToJsonTyped(Utf8JsonWriter writer, Guid value)
         => writer.WriteStringValue(value);
+
+    /// <inheritdoc />
+    public override Expression ConstructorExpression
+        => Expression.Property(null, InstanceProperty);
 }

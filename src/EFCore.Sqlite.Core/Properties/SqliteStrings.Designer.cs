@@ -82,6 +82,14 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Internal
                 type);
 
         /// <summary>
+        ///     SQLite version {sqliteVersion} is being used, but version 3.38.0 or higher is required for querying into JSON collections.
+        /// </summary>
+        public static string QueryingIntoJsonCollectionsNotSupported(object? sqliteVersion)
+            => string.Format(
+                GetString("QueryingIntoJsonCollectionsNotSupported", nameof(sqliteVersion)),
+                sqliteVersion);
+
+        /// <summary>
         ///     SQLite does not support sequences. See https://go.microsoft.com/fwlink/?LinkId=723262 for more information and examples.
         /// </summary>
         public static string SequencesNotSupported
