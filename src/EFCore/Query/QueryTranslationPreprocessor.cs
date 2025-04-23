@@ -9,6 +9,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 /// <summary>
 ///     <para>
 ///         A class that preprocesses the query before translation.
+///         在翻译之前对查询进行预处理的类。
 ///     </para>
 ///     <para>
 ///         This type is typically used by database providers (and other extensions). It is generally
@@ -36,6 +37,7 @@ public class QueryTranslationPreprocessor
 
     /// <summary>
     ///     Dependencies for this service.
+    ///     此服务的依赖关系。
     /// </summary>
     protected virtual QueryTranslationPreprocessorDependencies Dependencies { get; }
 
