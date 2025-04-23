@@ -5,7 +5,7 @@ namespace Microsoft.EntityFrameworkCore.Storage;
 
 /// <summary>
 ///     <para>
-///         Creates and deletes databases for a given database provider.
+///         Creates and deletes databases for a given database provider.为给定的数据库提供程序创建和删除数据库
 ///     </para>
 ///     <para>
 ///         This interface is typically used by database providers (and other extensions). It is generally

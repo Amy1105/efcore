@@ -6,10 +6,12 @@ namespace Microsoft.EntityFrameworkCore.Storage;
 /// <summary>
 ///     <para>
 ///         Performs database/schema creation, and other related operations.
+///         执行数据库/模式创建和其他相关操作。
 ///     </para>
 ///     <para>
 ///         This type is typically used by database providers (and other extensions). It is generally
 ///         not used in application code.
+///         这种类型通常由数据库提供程序（和其他扩展）使用。它通常不用于应用程序代码。
 ///     </para>
 /// </summary>
 /// <remarks>

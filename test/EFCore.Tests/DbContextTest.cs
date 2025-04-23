@@ -283,10 +283,15 @@ public partial class DbContextTest
         {
             context.Database.EnsureDeleted();
 
+           // var d = context.Users;
+
             context.AddRange(
                 new User { Id = 3 }, new User { Id = 4 });
             context.SaveChanges();
         }
+
+
+
 
         using (var context = new ActiveAddContext())
         {
