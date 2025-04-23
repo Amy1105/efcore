@@ -9,8 +9,10 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking;
 
 /// <summary>
 ///     Provides access to change tracking information and operations for entity instances the context is tracking.
+///     提供对上下文正在跟踪的实体实例的更改跟踪信息和操作的访问。
 ///     Instances of this class are typically obtained from <see cref="DbContext.ChangeTracker" /> and it is not designed
 ///     to be directly constructed in your application code.
+///     此类的实例通常从<see cref="DbContext.ChangeTracker" />获得，它不是为在应用程序代码中直接构造而设计的。
 /// </summary>
 /// <remarks>
 ///     See <see href="https://aka.ms/efcore-docs-change-tracking">EF Core change tracking</see> for more information and examples.
@@ -57,6 +59,7 @@ public class ChangeTracker : IResettableService
     /// <summary>
     ///     Gets or sets a value indicating whether the <see cref="DetectChanges()" /> method is called
     ///     automatically by methods of <see cref="DbContext" /> and related classes.
+    ///     获取或设置一个值，该值指示是否调用<see cref="DetectChanges()" />方法通过<see cref="DbContext" /> 和相关类的方法自动执行。
     /// </summary>
     /// <remarks>
     ///     <para>
@@ -74,8 +77,8 @@ public class ChangeTracker : IResettableService
     public virtual bool AutoDetectChangesEnabled { get; set; } = true;
 
     /// <summary>
-    ///     Gets or sets a value indicating whether navigation properties for tracked entities
-    ///     will be loaded on first access.
+    ///     Gets or sets a value indicating whether navigation properties for tracked entities will be loaded on first access. 
+    ///     获取或设置一个值，该值指示是否在首次访问时加载被跟踪实体的导航属性。
     /// </summary>
     /// <remarks>
     ///     The default value is true. However, lazy loading will only occur for navigation properties
@@ -227,6 +230,8 @@ public class ChangeTracker : IResettableService
     ///     Checks if any new, deleted, or changed entities are being tracked
     ///     such that these changes will be sent to the database if <see cref="DbContext.SaveChanges()" />
     ///     or <see cref="DbContext.SaveChangesAsync(CancellationToken)" /> is called.
+    ///     检查是否正在跟踪任何新的、删除的或更改的实体 这样，如果<see cref="DbContext.SaveChanges()" />，
+    ///     这些更改将被发送到数据库或者<see cref="DbContext.SaveChangesAsync(CancellationToken)" />被调用。
     /// </summary>
     /// <remarks>
     ///     <para>
@@ -247,7 +252,7 @@ public class ChangeTracker : IResettableService
     }
 
     /// <summary>
-    ///     Gets the context this change tracker belongs to.
+    ///     Gets the context this change tracker belongs to.获取此更改跟踪器所属的上下文
     /// </summary>
     public virtual DbContext Context { get; }
 
@@ -272,6 +277,8 @@ public class ChangeTracker : IResettableService
     ///     Accepts all changes made to entities in the context. It will be assumed that the tracked entities
     ///     represent the current state of the database. This method is typically called by <see cref="DbContext.SaveChanges()" />
     ///     after changes have been successfully saved to the database.
+    ///     接受对上下文中的实体所做的所有更改。将假设被跟踪的实体代表数据库的当前状态。
+    ///     此方法通常由<see cref="DbContext.SaveChanges()" />调用更改成功保存到数据库后。
     /// </summary>
     public virtual void AcceptAllChanges()
         => StateManager.AcceptAllChanges();
@@ -282,6 +289,9 @@ public class ChangeTracker : IResettableService
     ///     The specified <paramref name="callback" /> is called for each discovered entity and must set the
     ///     <see cref="EntityEntry.State" /> that each entity should be tracked in. If no state is set, the entity
     ///     remains untracked.
+    ///     开始跟踪实体以及通过遍历其导航属性可访问的任何实体。遍历是递归的，因此任何发现的实体的导航属性也将被扫描。
+    ///     为每个发现的实体调用指定的<paramref name =“callback”/>，并且必须设置<see cref="EntityEntry.State" />每个实体都应该被跟踪。
+    ///     如果没有设置状态，则实体 仍然未被追踪。
     /// </summary>
     /// <remarks>
     ///     <para>
@@ -392,6 +402,7 @@ public class ChangeTracker : IResettableService
     /// <summary>
     ///     An event fired when an entity is about to be tracked by the context, either because it is returned
     ///     from a tracking query, or because it is being attached or added to the context.
+    ///     当实体即将被上下文跟踪时触发的事件，要么是因为它是从跟踪查询中返回的，要么是由于它被附加或添加到上下文中。
     /// </summary>
     /// <remarks>
     ///     <para>
@@ -407,6 +418,7 @@ public class ChangeTracker : IResettableService
     /// <summary>
     ///     An event fired when an entity is tracked by the context, either because it was returned
     ///     from a tracking query, or because it was attached or added to the context.
+    ///     当实体被上下文跟踪时触发的事件，要么是因为它是从跟踪查询中返回的，要么是由于它被附加或添加到上下文中。
     /// </summary>
     /// <remarks>
     ///     <para>
@@ -422,6 +434,7 @@ public class ChangeTracker : IResettableService
     /// <summary>
     ///     An event fired when an entity that is tracked by the associated <see cref="DbContext" /> is moving
     ///     from one <see cref="EntityState" /> to another.
+    ///     当关联的<see cref="DbContext" /> 跟踪的实体从一个<see cref="EntityState" />移动到另一个时触发的事件。
     /// </summary>
     /// <remarks>
     ///     <para>

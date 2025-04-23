@@ -11,25 +11,32 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
 namespace Microsoft.EntityFrameworkCore;
 
 /// <summary>
-///     A DbContext instance represents a session with the database and can be used to query and save
-///     instances of your entities. DbContext is a combination of the Unit Of Work and Repository patterns.
+///     A DbContext instance represents a session with the database and can be used to query and save  instances of your entities. 
+///    DbContext is a combination of the Unit Of Work and Repository patterns.
+///     DbContext实例表示与数据库的会话，可用于查询和保存实体的实例。
+///     DbContext是工作单元和存储库模式的组合。
 /// </summary>
 /// <remarks>
 ///     <para>
-///         Entity Framework Core does not support multiple parallel operations being run on the same DbContext instance. This
-///         includes both parallel execution of async queries and any explicit concurrent use from multiple threads.
-///         Therefore, always await async calls immediately, or use separate DbContext instances for operations that execute
-///         in parallel. See <see href="https://aka.ms/efcore-docs-threading">Avoiding DbContext threading issues</see> for more information
-///         and examples.
+///         Entity Framework Core does not support multiple parallel operations being run on the same DbContext instance.
+///         Entity Framework Core不支持在同一个Contoso实例上运行多个并行操作。
+///         This includes both parallel execution of async queries and any explicit concurrent use from multiple threads.
+///         这包括异步查询的并行执行和来自多个线程的任何显式并发使用。
+///         Therefore, always await async calls immediately, or use separate DbContext instances for operations that execute  in parallel.
+///         因此，始终立即等待异步调用，或者对并行执行的操作使用单独的Contoso实例。
+///         See <see href="https://aka.ms/efcore-docs-threading">Avoiding DbContext threading issues</see> for more information  and examples.
+///         请参阅<See href="https://aka.ms/efcore-docs-threading">有关更多信息和示例，请参阅</see>以避免SqlCo线程问题。
 ///     </para>
 ///     <para>
-///         Typically you create a class that derives from DbContext and contains <see cref="DbSet{TEntity}" />
-///         properties for each entity in the model. If the <see cref="DbSet{TEntity}" /> properties have a public setter,
-///         they are automatically initialized when the instance of the derived context is created.
+///         Typically you create a class that derives from DbContext and contains <see cref="DbSet{TEntity}" /> properties for each entity in the model.
+///         通常，您会创建一个从Contoso派生的类，该类包含模型中每个实体的<see-cref="DbSet{TEntity}"/>属性。
+///         If the <see cref="DbSet{TEntity}" /> properties have a public setter,they are automatically initialized when the instance of the derived context is created.
+///         如果<see-cref="DbSet{TEntity}"/>属性具有公共setter，则在创建派生上下文的实例时会自动初始化它们。
 ///     </para>
 ///     <para>
-///         Override the <see cref="OnConfiguring(DbContextOptionsBuilder)" /> method to configure the database (and
-///         other options) to be used for the context. Alternatively, if you would rather perform configuration externally
+///         Override the <see cref="OnConfiguring(DbContextOptionsBuilder)" /> method to configure the database (and other options) to be used for the context.
+///         重写<see cref="OnConfiguring(DbContextOptionsBuilder)"/>方法，以配置用于上下文的数据库（和其他选项）。
+///          Alternatively, if you would rather perform configuration externally
 ///         instead of inline in your context, you can use <see cref="DbContextOptionsBuilder{TContext}" />
 ///         (or <see cref="DbContextOptionsBuilder" />) to externally create an instance of <see cref="DbContextOptions{TContext}" />
 ///         (or <see cref="DbContextOptions" />) and pass it to a base constructor of <see cref="DbContext" />.
@@ -134,6 +141,7 @@ public class DbContext :
 
     /// <summary>
     ///     Provides access to database related information and operations for this context.
+    ///     提供对此上下文的数据库相关信息和操作的访问。
     /// </summary>
     public virtual DatabaseFacade Database
     {
@@ -153,6 +161,7 @@ public class DbContext :
 
     /// <summary>
     ///     Provides access to information and operations for entity instances this context is tracking.
+    ///     提供对此上下文跟踪的实体实例的信息和操作的访问。
     /// </summary>
     /// <remarks>
     ///     See <see href="https://aka.ms/efcore-docs-change-tracking">EF Core change tracking</see> for more information and examples.
@@ -173,7 +182,9 @@ public class DbContext :
 
     /// <summary>
     ///     The metadata about the shape of entities, the relationships between them, and how they map to the database.
+    ///     关于实体形状、它们之间的关系以及它们如何映射到数据库的元数据。
     ///     May not include all the information necessary to initialize the database.
+    ///     可能不包括初始化数据库所需的所有信息。
     /// </summary>
     /// <remarks>
     ///     See <see href="https://aka.ms/efcore-docs-modeling">Modeling entity types and relationships</see> for more information and examples.
@@ -186,10 +197,12 @@ public class DbContext :
 
     /// <summary>
     ///     A unique identifier for the context instance and pool lease, if any.
+    ///     上下文实例和池租约的唯一标识符（如果有的话）。
     /// </summary>
     /// <remarks>
     ///     This identifier is primarily intended as a correlation ID for logging and debugging such
     ///     that it is easy to identify that multiple events are using the same or different context instances.
+    ///     此标识符主要用作日志记录和调试的关联ID，以便很容易识别多个事件使用相同或不同的上下文实例。
     /// </remarks>
     public virtual DbContextId ContextId
         => new(_contextId, _leaseCount);
@@ -209,6 +222,9 @@ public class DbContext :
     ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    ///    这是一个内部API，支持实体框架核心基础设施，不受与公共API相同的兼容性标准的约束。如有更改或删除，恕不另行通知任何释放。
+    ///    您应该非常谨慎地直接在代码中使用它，并且知道这样做可能会导致更新到新的Entity Framework Core版本时应用程序失败。
+    /// 
     /// </summary>
     [EntityFrameworkInternal]
     IEntityFinderFactory IDbContextDependencies.EntityFinderFactory
@@ -219,6 +235,9 @@ public class DbContext :
     ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    ///    这是一个内部API，支持实体框架核心基础设施，不受与公共API相同的兼容性标准的约束。如有更改或删除，恕不另行通知任何释放。
+    ///    您应该非常谨慎地直接在代码中使用它，并且知道这样做可能会导致更新到新的Entity Framework Core版本时应用程序失败。
+    /// 
     /// </summary>
     [EntityFrameworkInternal]
     IAsyncQueryProvider IDbContextDependencies.QueryProvider
@@ -368,12 +387,13 @@ public class DbContext :
         => (DbSet<TEntity>)((IDbSetCache)this).GetOrAddSet(DbContextDependencies.SetSource, typeof(TEntity));
 
     /// <summary>
-    ///     Creates a <see cref="DbSet{TEntity}" /> for a shared-type entity type that can be used to query and save
-    ///     instances of <typeparamref name="TEntity" />.
+    ///     Creates a <see cref="DbSet{TEntity}" /> for a shared-type entity type that can be used to query and save  instances of <typeparamref name="TEntity" />.
+    ///     为可用于查询和保存<typeparamref name="TEntity"/>实例的共享类型实体类型创建一个<see cref="DbSet{TEntity}"/>。
     /// </summary>
     /// <remarks>
     ///     <para>
     ///         Shared-type entity types are typically used for the join entity in many-to-many relationships.
+    ///         共享类型实体类型通常用于多对多关系中的联接实体。
     ///     </para>
     ///     <para>
     ///         See <see href="https://aka.ms/efcore-docs-query">Querying data with EF Core</see>,
@@ -497,8 +517,10 @@ public class DbContext :
 
     /// <summary>
     ///     Override this method to configure the database (and other options) to be used for this context.
+    ///     重写此方法以配置用于此上下文的数据库（和其他选项）。
     ///     This method is called for each instance of the context that is created.
-    ///     The base implementation does nothing.
+    ///     为创建的上下文的每个实例调用此方法。
+    ///     The base implementation does nothing.基础实现什么也不做。
     /// </summary>
     /// <remarks>
     ///     <para>
@@ -521,8 +543,8 @@ public class DbContext :
     }
 
     /// <summary>
-    ///     Override this method to set defaults and configure conventions before they run. This method is invoked before
-    ///     <see cref="OnModelCreating" />.
+    ///     Override this method to set defaults and configure conventions before they run. This method is invoked before <see cref="OnModelCreating" />.
+    ///     重写此方法以在运行之前设置默认值并配置约定。此方法在<see cref="OnModelCreation"/>之前调用。
     /// </summary>
     /// <remarks>
     ///     <para>
@@ -543,8 +565,10 @@ public class DbContext :
 
     /// <summary>
     ///     Override this method to further configure the model that was discovered by convention from the entity types
-    ///     exposed in <see cref="DbSet{TEntity}" /> properties on your derived context. The resulting model may be cached
-    ///     and re-used for subsequent instances of your derived context.
+    ///     exposed in <see cref="DbSet{TEntity}" /> properties on your derived context.
+    ///    重写此方法以进一步配置根据惯例从派生上下文的<see cref="DbSet{TEntity}"/>属性中公开的实体类型中发现的模型。
+    ///    The resulting model may be cached and re-used for subsequent instances of your derived context.
+    ///     生成的模型可能会被缓存并重新用于派生上下文的后续实例。
     /// </summary>
     /// <remarks>
     ///     <para>
@@ -567,6 +591,7 @@ public class DbContext :
 
     /// <summary>
     ///     Saves all changes made in this context to the database.
+    ///     将在此上下文中所做的所有更改保存到数据库。
     /// </summary>
     /// <remarks>
     ///     <para>
@@ -601,6 +626,7 @@ public class DbContext :
 
     /// <summary>
     ///     Saves all changes made in this context to the database.
+    ///     将在此上下文中所做的所有更改保存到数据库。
     /// </summary>
     /// <remarks>
     ///     <para>
@@ -828,6 +854,7 @@ public class DbContext :
 
     /// <summary>
     ///     An event fired at the beginning of a call to <see cref="O:SaveChanges" /> or <see cref="O:SaveChangesAsync" />
+    ///     在调用<see cref="O:SaveChanges"/>或<see credf="O:SaveChangesAsync"/>开始时触发的事件
     /// </summary>
     /// <remarks>
     ///     See <see href="https://aka.ms/efcore-docs-saving-data">Saving data in EF Core</see> and
@@ -837,6 +864,7 @@ public class DbContext :
 
     /// <summary>
     ///     An event fired at the end of a call to <see cref="O:SaveChanges" /> or <see cref="O:SaveChangesAsync" />
+    ///      在调用<see cref="O:SaveChanges"/>或<see credf="O:SaveChangesAsync"/>结束时触发的事件
     /// </summary>
     /// <remarks>
     ///     See <see href="https://aka.ms/efcore-docs-saving-data">Saving data in EF Core</see> and
@@ -846,6 +874,7 @@ public class DbContext :
 
     /// <summary>
     ///     An event fired if a call to <see cref="O:SaveChanges" /> or <see cref="O:SaveChangesAsync" /> fails with an exception.
+    ///     在调用<see cref="O:SaveChanges"/>或<see credf="O:SaveChangesAsync"/>失败时触发的事件
     /// </summary>
     /// <remarks>
     ///     See <see href="https://aka.ms/efcore-docs-saving-data">Saving data in EF Core</see> and
@@ -858,6 +887,9 @@ public class DbContext :
     ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    ///
+    /// 这是一个内部API，支持实体框架核心基础设施，不受与公共API相同的兼容性标准。如有更改或删除，恕不另行通知任何释放。
+    /// 您应该非常谨慎地直接在代码中使用它，并知道这样做可能会导致更新到新的Entity Framework Core版本时应用程序失败。
     /// </summary>
     [EntityFrameworkInternal]
     void IDbContextPoolable.ClearLease()
@@ -1073,6 +1105,7 @@ public class DbContext :
 
     /// <summary>
     ///     Releases the allocated resources for this context.
+    ///     释放为此上下文分配的资源。
     /// </summary>
     /// <remarks>
     ///     <para>
@@ -1145,6 +1178,7 @@ public class DbContext :
     /// <summary>
     ///     Gets an <see cref="EntityEntry{TEntity}" /> for the given entity. The entry provides
     ///     access to change tracking information and operations for the entity.
+    ///     获取给定实体的<see-cref="EntityEntry{TEntity}"/>。该条目提供了对实体更改跟踪信息和操作的访问。
     /// </summary>
     /// <remarks>
     ///     See <see href="https://aka.ms/efcore-docs-entity-entries">Accessing tracked entities in EF Core</see> for more information and
@@ -1239,9 +1273,10 @@ public class DbContext :
                 cancellationToken: cancellationToken);
 
     /// <summary>
-    ///     Begins tracking the given entity, and any other reachable entities that are
-    ///     not already being tracked, in the <see cref="EntityState.Added" /> state such that
-    ///     they will be inserted into the database when <see cref="SaveChanges()" /> is called.
+    ///     Begins tracking the given entity, and any other reachable entities that are not already being tracked,
+    ///     开始跟踪给定实体以及尚未被跟踪的任何其他可访问实体，
+    ///     in the <see cref="EntityState.Added" /> state such that they will be inserted into the database when <see cref="SaveChanges()" /> is called.
+    ///     在<see-cref="EntityState.Added"/>状态下，当调用<see-cref="SaveChanges()"/>时，它们将被插入数据库。
     /// </summary>
     /// <remarks>
     ///     <para>
@@ -1445,8 +1480,9 @@ public class DbContext :
             SetEntityState(entry.GetInfrastructure(), EntityState.Unchanged);
         }
 
-        // An Added entity does not yet exist in the database. If it is then marked as deleted there is
-        // nothing to delete because it was not yet inserted, so just make sure it doesn't get inserted.
+        // An Added entity does not yet exist in the database.数据库中尚未存在添加的实体
+        // If it is then marked as deleted there is nothing to delete because it was not yet inserted, so just make sure it doesn't get inserted.
+        // 如果它被标记为已删除，则没有什么可删除的，因为它尚未插入，所以只需确保它没有被插入。
         entry.State =
             initialState == EntityState.Added
                 ? EntityState.Detached
@@ -2249,6 +2285,7 @@ public class DbContext :
 
     /// <summary>
     ///     Creates a queryable for given query expression.
+    ///     为给定的查询表达式创建可查询对象。
     /// </summary>
     /// <remarks>
     ///     See <see href="https://aka.ms/efcore-docs-query">Querying data with EF Core</see> for more information and examples.

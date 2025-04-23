@@ -15,6 +15,9 @@ namespace Microsoft.EntityFrameworkCore.Internal;
 ///     The service lifetime is <see cref="ServiceLifetime.Singleton" />. This means a single instance
 ///     is used by many <see cref="DbContext" /> instances. The implementation must be thread-safe.
 ///     This service cannot depend on services registered as <see cref="ServiceLifetime.Scoped" />.
+///     这个服务生命周期是单例的<see cref="ServiceLifetime.Singleton" />。这意味着只有一个实例被许多<see cref="DbContext" />实例使用。
+///     实现必须是线程安全的。此服务不能依赖于注册为 <see cref="ServiceLifetime.Scoped" />的服务。
+
 /// </remarks>
 public interface IDbSetSource
 {
